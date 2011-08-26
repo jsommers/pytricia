@@ -1,0 +1,13 @@
+- unittesting code needs expansion
+  - handle py2/py3 differences better rather than two test.py's
+
+- make sure i'm not leaking any memory...
+
+- write some documentation
+
+- finish and post results of performance tests
+  - cpython 2.7.1
+  - pypy 1.6 - doesn't compile yet with pypy
+  - compare radix, subnettree, and pytricia
+
+- perf tests for py3k as another comparison
