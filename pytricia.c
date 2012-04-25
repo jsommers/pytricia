@@ -272,6 +272,7 @@ pytricia_get(register PyTricia *obj, PyObject *args)
 
     if (!node) {
         if (defvalue) {
+            Py_INCREF(defvalue);
             return defvalue;
         }
         Py_RETURN_NONE;
