@@ -18,7 +18,7 @@ setup(name="pytricia",
               "Topic :: Scientific/Engineering",
       ],
       ext_modules=[
-         Extension("pytricia", ["pytricia.c","patricia.c","patricia.h"]),
+         Extension("pytricia", ["pytricia.c","patricia.c"]),
          ],
       long_description='''
 Pytricia is a new python module to store IP prefixes in a
