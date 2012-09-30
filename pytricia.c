@@ -576,11 +576,19 @@ initpytricia(void)
     PyObject* m;
 
     if (PyType_Ready(&PyTriciaType) < 0)
+#if PY_MAJOR_VERSION >= 3
+        return NULL;
+#else
         return;
+#endif
 
     PyTriciaIterType.tp_new = PyType_GenericNew;
     if (PyType_Ready(&PyTriciaIterType) < 0)
+#if PY_MAJOR_VERSION >= 3
+        return NULL;
+#else
         return;
+#endif
 
 #if PY_MAJOR_VERSION >= 3
     m = PyModule_Create(&pytricia_moduledef);
@@ -588,12 +596,19 @@ initpytricia(void)
     m = Py_InitModule3("pytricia", pytricia_methods, pytricia_doc);
 #endif
     if (m == NULL)
+#if PY_MAJOR_VERSION >= 3
+      return NULL;
+#else
       return;
+#endif
 
     Py_INCREF(&PyTriciaType);
     Py_INCREF(&PyTriciaIterType);
     PyModule_AddObject(m, "PyTricia", (PyObject *)&PyTriciaType);
     PyModule_AddObject(m, "PyTriciaIter", (PyObject *)&PyTriciaIterType);
+
+#if PY_MAJOR_VERSION >= 3
     return m;
+#endif
 }
 
