@@ -5,6 +5,7 @@ setup(name="pytricia",
       author="Joel Sommers",
       author_email="jsommers@acm.org",
       url="https://github.com/jsommers/pytricia",
+      download_url="http://cs.colgate.edu/~jsommers/downloads/pytricia-0.1.tar.gz",
       keywords=['patricia tree','IP addresses'],
       classifiers=[
               "Programming Language :: Python",
