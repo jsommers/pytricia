@@ -1,0 +1,6 @@
+include patricia.c
+include patricia.h
+include pytricia.c
+include MANIFEST.in
+include setup.py
+include README.md
