@@ -127,6 +127,18 @@ class PyTriciaTests(unittest.TestCase):
         self.assertRaises(StopIteration, next, x)
         self.assertRaises(StopIteration, next, x)
 
+    def testBroken(self):
+        import ipaddr
+        ip = ipaddr.IPv4Network('10.0.1.0/24')
+        pyt1 = pytricia.PyTricia()
+        pyt2 = pytricia.PyTricia()
+        pyt1[str(ip)] = 'a'
+        ip = ipaddr.IPv4Network('10.0.2.0/24')
+        pyt2[str(ip)] = 'b'
+        self.assertEqual(pyt2[str(ip)], 'b')
+        del pyt1['10.0.1.0/24']
+        self.assertEqual(pyt2[str(ip)], 'b')
+
 
 # tests should cover:
 # get w,w/o default, has_key, keys, in, [] access, [] assigment

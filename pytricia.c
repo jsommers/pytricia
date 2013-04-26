@@ -431,8 +431,12 @@ pytriciaiter_next(PyTriciaIter *iter)
 static void
 pytriciaiter_dealloc(PyTriciaIter *iterobj)
 {
-    free(iterobj->m_Xstack);
-    Py_DECREF(iterobj->m_tree);
+    if (iterobj->m_Xstack) {
+        free(iterobj->m_Xstack);
+    }
+    if (iterobj->m_tree) {
+        Py_DECREF(iterobj->m_tree);
+    }
     Py_TYPE(iterobj)->tp_free((PyObject*)iterobj);    
 }
 
@@ -464,7 +468,7 @@ static PyTypeObject PyTriciaType = {
     0,		               /* tp_weaklistoffset */
     (getiterfunc)pytricia_iter,	/* tp_iter */
     0,		               /* tp_iternext */
-    pytricia_methods,         /* tp_methods */
+    pytricia_methods,          /* tp_methods */
     0,                         /* tp_members */
     0,                         /* tp_getset */
     0,                         /* tp_base */
@@ -479,7 +483,7 @@ static PyTypeObject PyTriciaType = {
 
 static PyTypeObject PyTriciaIterType = {
     PyVarObject_HEAD_INIT(NULL, 0)
-    "pytricia.PyTriciaIter",               /* tp_name */
+    "pytricia.PyTriciaIter",                /* tp_name */
     sizeof(PyTriciaIter),                   /* tp_basicsize */
     0,                                      /* tp_itemsize */
     /* methods */
@@ -553,7 +557,7 @@ static struct PyModuleDef pytricia_moduledef = {
     "pytricia",       /* m_name */
     pytricia_doc,     /* m_doc */
     -1,               /* m_size */
-    pytricia_methods, /* m_methods */
+    NULL,             /* m_methods */
     NULL,             /* m_reload */
     NULL,             /* m_traverse */
     NULL,             /* m_clear */
@@ -593,7 +597,7 @@ initpytricia(void)
 #if PY_MAJOR_VERSION >= 3
     m = PyModule_Create(&pytricia_moduledef);
 #else
-    m = Py_InitModule3("pytricia", pytricia_methods, pytricia_doc);
+    m = Py_InitModule3("pytricia", NULL, pytricia_doc);
 #endif
     if (m == NULL)
 #if PY_MAJOR_VERSION >= 3
@@ -605,7 +609,10 @@ initpytricia(void)
     Py_INCREF(&PyTriciaType);
     Py_INCREF(&PyTriciaIterType);
     PyModule_AddObject(m, "PyTricia", (PyObject *)&PyTriciaType);
-    PyModule_AddObject(m, "PyTriciaIter", (PyObject *)&PyTriciaIterType);
+
+    // JS: don't add this object to the public interface.  users shouldn't be
+    // able to create iterator objects w/o calling __iter__ on a pytricia object.
+    // PyModule_AddObject(m, "PyTriciaIter", (PyObject *)&PyTriciaIterType);
 
 #if PY_MAJOR_VERSION >= 3
     return m;
