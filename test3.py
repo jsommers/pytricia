@@ -102,7 +102,31 @@ class PyTriciaTests(unittest.TestCase):
         pyt["0.0.0.0/0"] = 'default route'
         self.assertListEqual(sorted(['0.0.0.0/0', '10.0.0.0/8','10.1.0.0/16','10.0.1.0/24']), sorted(list(pyt.__iter__())))
         # self.assertListEqual(['0.0.0.0/0', '10.0.0.0/8','10.1.0.0/16','10.0.1.0/24'], list(iter(pyt)))
- 
+
+    def testIteration2(self):
+        pyt = pytricia.PyTricia()
+        pyt["10.1.0.0/16"] = 'b'
+        pyt["10.0.0.0/8"] = 'a'
+        pyt["10.0.1.0/24"] = 'c'
+        x = iter(pyt)
+        self.assertIsNotNone(next(x))
+        self.assertIsNotNone(next(x))
+        self.assertIsNotNone(next(x))
+        self.assertRaises(StopIteration, next, x)
+        self.assertRaises(StopIteration, next, x)
+
+    def testIteration3(self):
+        pyt = pytricia.PyTricia()
+        pyt["10.1.0.0/16"] = 'b'
+        pyt["10.0.0.0/8"] = 'a'
+        pyt["10.0.1.0/24"] = 'c'
+        x = iter(pyt)
+        del pyt["10.0.1.0/24"]
+        self.assertIsNotNone(next(x))
+        self.assertIsNotNone(next(x))
+        self.assertRaises(StopIteration, next, x)
+        self.assertRaises(StopIteration, next, x)
+
 
 # tests should cover:
 # get w,w/o default, has_key, keys, in, [] access, [] assigment
