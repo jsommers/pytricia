@@ -388,15 +388,15 @@ void
 Deref_Prefix (prefix_t * prefix)
 {
     if (prefix == NULL)
-	return;
+	   return;
     /* for secure programming, raise an assert. no static prefix can call this */
     assert (prefix->ref_count > 0);
 
     prefix->ref_count--;
     assert (prefix->ref_count >= 0);
     if (prefix->ref_count <= 0) {
-	Delete (prefix);
-	return;
+    	Delete (prefix);
+    	return;
     }
 }
 
@@ -994,7 +994,7 @@ make_and_lookup (patricia_tree_t *tree, char *string)
     patricia_node_t *node;
 
     prefix = ascii2prefix (AF_INET, string);
-    printf ("make_and_lookup: %s/%d\n", prefix_toa (prefix), prefix->bitlen);
+    // printf ("make_and_lookup: %s/%d\n", prefix_toa (prefix), prefix->bitlen);
     node = patricia_lookup (tree, prefix);
     Deref_Prefix (prefix);
     return (node);

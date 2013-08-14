@@ -11,3 +11,13 @@
   - compare radix, subnettree, and pytricia
 
 - perf tests for py3k as another comparison
+
+
+-----
+
+segfault when using insert/get pattern rather than
+  - indexing assignment
+  - use 'in' to check presence, then indexing to retrieve
+    - use prefix to assign, simple address to retrieve
+  
+  - use routeviews prefix2as, randomly retrieve addresses

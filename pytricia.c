@@ -132,8 +132,7 @@ static prefix_t*
 pystr_to_prefix(PyObject *pystr)
 {
     char *cstraddr = NULL;
-    int tmp_size = 0;
-    if (!PyArg_Parse(pystr, "s", &cstraddr, &tmp_size)) {
+    if (!PyArg_Parse(pystr, "s", &cstraddr)) {
         return NULL;
     }
         
@@ -188,9 +187,7 @@ pytricia_internal_delete(PyTricia *self, PyObject *key)
 
     // decrement ref count on data referred to by key, if it exists
     PyObject* data = (PyObject*)node->data;
-    if (data) {
-        Py_DECREF(data);
-    }
+    Py_XDECREF(data);
 
     patricia_remove(self->m_tree, node);
     return 0;
@@ -203,15 +200,13 @@ pytricia_assign_subscript(PyTricia *self, PyObject *key, PyObject *value)
         return pytricia_internal_delete(self, key);
     }
     
-    prefix_t* prefix = pystr_to_prefix(key);
-    if (prefix == NULL) {
+    char *keystr = NULL;
+    if (!PyArg_Parse(key, "s", &keystr)) {
         PyErr_SetString(PyExc_ValueError, "Error parsing prefix.");
         return -1;
     }
     
-    patricia_node_t* node = patricia_lookup(self->m_tree, prefix);
-    Deref_Prefix(prefix);
-
+    patricia_node_t* node = make_and_lookup(self->m_tree, keystr);
     if (!node) {
         PyErr_SetString(PyExc_ValueError, "Error inserting into patricia tree");
         return -1;
@@ -225,14 +220,25 @@ pytricia_assign_subscript(PyTricia *self, PyObject *key, PyObject *value)
 
 static PyObject*
 pytricia_insert(PyTricia *self, PyObject *args) {
-    PyObject *key = NULL, *value = NULL;
+    char *keystr = NULL;
+    PyObject *value = NULL;
+    if (!PyArg_ParseTuple(args, "sO", &keystr, &value)) {
+        return NULL;
+    }
 
-    if (!PyArg_ParseTuple(args, "OO", &key, &value))
+    patricia_node_t* node = make_and_lookup(self->m_tree, keystr);
+    if (!node) {
+        PyErr_SetString(PyExc_ValueError, "Error inserting into patricia tree");
         return NULL;
-    
-    if (pytricia_assign_subscript(self, key, value))
-        return NULL;
-        
+    }
+
+    // two increments of refcounts: value is stored in patricia tree,
+    // as well as passed back to caller.
+
+    Py_INCREF(value);
+    node->data = value;
+
+    Py_INCREF(value);
     return value;
 }
 
@@ -341,7 +347,7 @@ pytricia_keys(register PyTricia *self, PyObject *unused)
             return NULL;
         }
         err = PyList_Append(rvlist, item);
-        Py_DECREF(item);
+        Py_INCREF(item);
         if (err != 0) {
             Py_DECREF(rvlist);
             return NULL;
@@ -380,7 +386,6 @@ static PyMethodDef pytricia_methods[] = {
     {"get", (PyCFunction)pytricia_get, METH_VARARGS, "get(prefix, [default]) -> object\nReturn value associated with prefix."},
     {"delete", (PyCFunction)pytricia_delitem, METH_VARARGS, "delete(prefix) -> \nDelete mapping associated with prefix.\n"},
     {"insert", (PyCFunction)pytricia_insert, METH_VARARGS, "insert(prefix, data) -> data\nCreate mapping between prefix and data in tree."},
-    // {"iter", (PyCFunction)pytricia_iter, METH_NOARGS, "iter() -> pytricia object iterator\nCreate an iterator for prefixes stored in PyTricia object."},
     {NULL,              NULL}           /* sentinel */
 };
 
