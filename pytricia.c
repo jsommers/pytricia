@@ -1,5 +1,6 @@
 #include <arpa/inet.h>
 #include <Python.h>
+#include <string.h>
 #include "patricia.h"
 
 /*
@@ -218,13 +219,46 @@ pytricia_assign_subscript(PyTricia *self, PyObject *key, PyObject *value)
     return 0;
 }
 
+// Takes a PyObject and returns the IP Address contained in IPV.4 notation.
+static char* get_str(PyObject *key) {
+    // Need to deal with refcounts & handle possible errors for conversions.
+    if (PyString_Check(key)) {
+        return PyString_AsString(key); // Converts PyObject to char*
+    }
+    else if (PyInt_Check(key)) {
+        long val = PyInt_AsLong(key);
+        char keystr[32];
+        int p = sprintf(keystr, "%d.%d.%d.%d", (val >> 24) & 0x000000ff, 
+            (val >> 16) & 0x000000ff, (val >> 8) & 0x000000ff, val&0x000000ff);
+        if (p < 0) {
+            printf("Error: Could not parse string. \n");
+        }
+    }
+}
+
 static PyObject*
 pytricia_insert(PyTricia *self, PyObject *args) {
-    char *keystr = NULL;
+    // When this is called it will be p[prefix] = obj.
+    // Deal with issue when type may be different - can you do "OO" to make it more generic?
+    // Python 3 has IP address & IP network object - figure out how to make this work.
+    // 1 - make parsetuple work with ints too.
+    // 2 - translate int to string. Everything is 32 bits but that's implicit.
+
+    // Next thing: look at test code & how IP addresses are used - we might have to translate everything
+    // in more places (ex: lookup).
+
+    // Figure out how Python 3 objects work.
+    // HOW TO FIGURE OUT WHAT AN OBJECT IS?!?!
+
+
+    //char *keystr = NULL;
+    PyObject *key = NULL;
     PyObject *value = NULL;
-    if (!PyArg_ParseTuple(args, "sO", &keystr, &value)) {
+    if (!PyArg_ParseTuple(args, "OO", &key, &value)) { // Changed from "sO"
         return NULL;
     }
+
+    char* keystr = get_str(key);
 
     patricia_node_t* node = make_and_lookup(self->m_tree, keystr);
     if (!node) {
@@ -238,7 +272,7 @@ pytricia_insert(PyTricia *self, PyObject *args) {
     Py_INCREF(value);
     node->data = value;
 
-    Py_INCREF(value);
+    Py_INCREF(value); // increase because you return it - you're basically making a new one.
     return value;
 }
 
@@ -386,6 +420,10 @@ static PyMethodDef pytricia_methods[] = {
     {"get", (PyCFunction)pytricia_get, METH_VARARGS, "get(prefix, [default]) -> object\nReturn value associated with prefix."},
     {"delete", (PyCFunction)pytricia_delitem, METH_VARARGS, "delete(prefix) -> \nDelete mapping associated with prefix.\n"},
     {"insert", (PyCFunction)pytricia_insert, METH_VARARGS, "insert(prefix, data) -> data\nCreate mapping between prefix and data in tree."},
+    // Prefix can be single IP address. Prefix length is assumed to be 32.
+    // When someone gives us something to add, is it a string? Detects whether prefix or not - if not, it's 32.
+    // We should accept integers.
+    // "10.1.3.5/32" -> "10.1.3.5" -> 0x0a010305 -> 0000 1010 0000 0001 0000 0011 0000 0101
     {NULL,              NULL}           /* sentinel */
 };
 
