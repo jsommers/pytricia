@@ -1,5 +1,6 @@
 #include <arpa/inet.h>
 #include <Python.h>
+#include <string.h>
 #include "patricia.h"
 
 /*
@@ -24,6 +25,24 @@ typedef struct {
     patricia_node_t **m_Xsp;
     patricia_node_t *m_Xrn;
 } PyTriciaIter;
+
+// Takes a PyObject and returns the IP Address contained in IPV.4 notation.
+static char* get_str(PyObject *key) {
+    // Need to deal with refcounts & handle possible errors for conversions.
+    if (PyString_Check(key)) {
+        return PyString_AsString(key); // Converts PyObject to char*
+    }
+    else if (PyInt_Check(key)) {
+        long val = htonl(PyInt_AsLong(key));
+        char keystr[32];
+        int p = sprintf(keystr, "%d.%d.%d.%d/32", val&0x000000ff, (val >> 8) & 0x000000ff, 
+            (val >> 16) & 0x000000ff, (val >> 24) & 0x000000ff);
+        if (p < 0) {
+            printf("Error: Could not parse string. \n");
+        }
+        return keystr;
+    }
+}
 
 static void
 pytricia_dealloc(PyTricia* self)
@@ -128,27 +147,45 @@ parse_cidr(const char *cidr, unsigned long *subnet, unsigned short *masklen)
     return 0;
 }
 
+//------------------------------------------------------
+//------------------------------------------------------
+//------------------------------------------------------
+//------------------------------------------------------
+//------------------------------------------------------
 static prefix_t*
-pystr_to_prefix(PyObject *pystr)
+pystr_to_prefix(/*PyObject *pystr*/char* str) // Changed to take in a string instead of a pystr.
 {
+    /*
     char *cstraddr = NULL;
     if (!PyArg_Parse(pystr, "s", &cstraddr)) {
         return NULL;
     }
-        
+    */
+    
+    if (!str) { // If str isn't populated for some reason.
+        return NULL;
+    }
+
     unsigned long subnet = 0UL;
     unsigned short mask = 0;
-    if (parse_cidr(cstraddr, &subnet, &mask)) {
+    if (parse_cidr(str, &subnet, &mask)) {
         return NULL;
     }
     
     return make_prefix(subnet, mask);
 }
+//------------------------------------------------------
+//------------------------------------------------------
+//------------------------------------------------------
+//------------------------------------------------------
+//------------------------------------------------------
 
 static PyObject* 
 pytricia_subscript(PyTricia *self, PyObject *key)
 {
-    prefix_t* subnet = pystr_to_prefix(key);
+    char* keystr = get_str(key); // Get string from PyObject.
+
+    prefix_t* subnet = pystr_to_prefix(keystr);
     if (subnet == NULL) {
         PyErr_SetString(PyExc_ValueError, "Error parsing prefix.");
         return NULL;
@@ -171,7 +208,9 @@ pytricia_subscript(PyTricia *self, PyObject *key)
 static int
 pytricia_internal_delete(PyTricia *self, PyObject *key)
 {
-    prefix_t* prefix = pystr_to_prefix(key);
+    char* keystr = get_str(key); // Get string from PyObject.
+
+    prefix_t* prefix = pystr_to_prefix(keystr);
     if (prefix == NULL) {
         PyErr_SetString(PyExc_ValueError, "Error parsing prefix.");
         return -1;
@@ -200,11 +239,14 @@ pytricia_assign_subscript(PyTricia *self, PyObject *key, PyObject *value)
         return pytricia_internal_delete(self, key);
     }
     
-    char *keystr = NULL;
+    char *keystr = get_str(key);
+
+    /* Taken out to test possible integer functionality.
     if (!PyArg_Parse(key, "s", &keystr)) {
-        PyErr_SetString(PyExc_ValueError, "Error parsing prefix.");
+        PyErr_SetString(PyExc_ValueError, "Error parsing prefix 4.");
         return -1;
     }
+    */
     
     patricia_node_t* node = make_and_lookup(self->m_tree, keystr);
     if (!node) {
@@ -220,11 +262,26 @@ pytricia_assign_subscript(PyTricia *self, PyObject *key, PyObject *value)
 
 static PyObject*
 pytricia_insert(PyTricia *self, PyObject *args) {
-    char *keystr = NULL;
+    // When this is called it will be p[prefix] = obj.
+    // Deal with issue when type may be different - can you do "OO" to make it more generic?
+    // Python 3 has IP address & IP network object - figure out how to make this work.
+    // 1 - make parsetuple work with ints too.
+    // 2 - translate int to string. Everything is 32 bits but that's implicit.
+
+    // Next thing: look at test code & how IP addresses are used - we might have to translate everything
+    // in more places (ex: lookup).
+
+    // Figure out how Python 3 objects work.
+    // HOW TO FIGURE OUT WHAT AN OBJECT IS?!?!
+
+
+    PyObject *key = NULL;
     PyObject *value = NULL;
-    if (!PyArg_ParseTuple(args, "sO", &keystr, &value)) {
+    if (!PyArg_ParseTuple(args, "OO", &key, &value)) { // Changed from "sO"
         return NULL;
     }
+
+    char* keystr = get_str(key);
 
     patricia_node_t* node = make_and_lookup(self->m_tree, keystr);
     if (!node) {
@@ -238,7 +295,7 @@ pytricia_insert(PyTricia *self, PyObject *args) {
     Py_INCREF(value);
     node->data = value;
 
-    Py_INCREF(value);
+    Py_INCREF(value); // increase because you return it - you're basically making a new one.
     return value;
 }
 
@@ -267,7 +324,9 @@ pytricia_get(register PyTricia *obj, PyObject *args)
     if (!PyArg_ParseTuple(args, "O|O:get", &key, &defvalue))
         return NULL;
 
-    prefix_t* prefix = pystr_to_prefix(key);
+    char* keystr = get_str(key); // Get string from PyObject.
+
+    prefix_t* prefix = pystr_to_prefix(keystr);
     if (prefix == NULL) {
         PyErr_SetString(PyExc_ValueError, "Error parsing prefix.");
         return NULL;
@@ -292,7 +351,8 @@ pytricia_get(register PyTricia *obj, PyObject *args)
 static int
 pytricia_contains(PyTricia *self, PyObject *key)
 {
-    prefix_t* prefix = pystr_to_prefix(key);
+    char* keystr = get_str(key); // Get string from PyObject.
+    prefix_t* prefix = pystr_to_prefix(keystr);
     if (!prefix) {
         PyErr_SetString(PyExc_ValueError, "Error parsing prefix.");
         return -1;
@@ -313,7 +373,9 @@ pytricia_has_key(PyTricia *self, PyObject *args)
     if (!PyArg_ParseTuple(args, "O", &key))
         return NULL;
         
-    prefix_t* prefix = pystr_to_prefix(key);
+    char* keystr = get_str(key); // Get string from PyObject.
+
+    prefix_t* prefix = pystr_to_prefix(keystr);
     if (!prefix) {
         PyErr_SetString(PyExc_ValueError, "Error parsing prefix.");
         return NULL;
@@ -386,6 +448,10 @@ static PyMethodDef pytricia_methods[] = {
     {"get", (PyCFunction)pytricia_get, METH_VARARGS, "get(prefix, [default]) -> object\nReturn value associated with prefix."},
     {"delete", (PyCFunction)pytricia_delitem, METH_VARARGS, "delete(prefix) -> \nDelete mapping associated with prefix.\n"},
     {"insert", (PyCFunction)pytricia_insert, METH_VARARGS, "insert(prefix, data) -> data\nCreate mapping between prefix and data in tree."},
+    // Prefix can be single IP address. Prefix length is assumed to be 32.
+    // When someone gives us something to add, is it a string? Detects whether prefix or not - if not, it's 32.
+    // We should accept integers.
+    // "10.1.3.5/32" -> "10.1.3.5" -> 0x0a010305 -> 0000 1010 0000 0001 0000 0011 0000 0101
     {NULL,              NULL}           /* sentinel */
 };
 
