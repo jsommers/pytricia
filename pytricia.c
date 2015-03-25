@@ -29,12 +29,26 @@ typedef struct {
 // Takes a PyObject and returns the IP Address contained in IPV.4 notation.
 static char* get_str(PyObject *key) {
     // Need to deal with refcounts & handle possible errors for conversions.
+
+    /*
+    #if PY_MAJOR_VERSION >= 3
+        // Python 3 case handling.
+        // Pull unicode object out.
+        return 
+    #else
+        // Python 2
+    #endif
+    */
+
     if (PyString_Check(key)) {
-        return PyString_AsString(key); // Converts PyObject to char*
+        char* keystr = malloc(sizeof(char) * PyString_Size(key));
+        keystr = PyString_AsString(key);
+        return keystr; // Converts PyObject to char*
+        //return PyString_AsString(key);
     }
     else if (PyInt_Check(key)) {
         long val = htonl(PyInt_AsLong(key));
-        char keystr[32];
+        char* keystr = malloc(sizeof(char) * 32);
         int p = sprintf(keystr, "%d.%d.%d.%d/32", val&0x000000ff, (val >> 8) & 0x000000ff, 
             (val >> 16) & 0x000000ff, (val >> 24) & 0x000000ff);
         if (p < 0) {
@@ -671,7 +685,7 @@ initpytricia(void)
     m = Py_InitModule3("pytricia", NULL, pytricia_doc);
 #endif
     if (m == NULL)
-#if PY_MAJOR_VERSION >= 3
+#if PY_MAJOR_VERSION >= 3 // Conditional compile statements - put python 2 specific in else block.
       return NULL;
 #else
       return;
