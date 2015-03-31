@@ -11,6 +11,17 @@
  * - error checking
  */
 
+ /* Bria's notes
+  * - Reference counting when you malloc things? 
+  * - Which errors do I handle & how do I handle them best? Do I need to handle every malloc?
+  * - WRITE TESTS!
+  *
+  *
+  */
+
+// packed byte rep -> cast to an array of uint8_t and then pull out in turn & add to string.
+// socket.inet_aton -> deal with the result of that
+
 typedef struct {
     PyObject_HEAD
     patricia_tree_t *m_tree;
@@ -26,37 +37,50 @@ typedef struct {
     patricia_node_t *m_Xrn;
 } PyTriciaIter;
 
-// Takes a PyObject and returns the IP Address contained in IPV.4 notation.
-static char* get_str(PyObject *key) {
-    // Need to deal with refcounts & handle possible errors for conversions.
+// Takes a PyObject and fills the string buffer for useage. Returns -1 on error, 0 on success.
+static int get_str(PyObject* key, char* keystr) {
 
-    /*
-    #if PY_MAJOR_VERSION >= 3
-        // Python 3 case handling.
-        // Pull unicode object out.
-        return 
-    #else
-        // Python 2
-    #endif
-    */
+    // Make it all stack allocated -> create char[20], possibly return error code.
 
-    if (PyString_Check(key)) {
-        char* keystr = malloc(sizeof(char) * PyString_Size(key));
-        keystr = PyString_AsString(key);
-        return keystr; // Converts PyObject to char*
-        //return PyString_AsString(key);
-    }
-    else if (PyInt_Check(key)) {
-        long val = htonl(PyInt_AsLong(key));
-        char* keystr = malloc(sizeof(char) * 32);
-        int p = sprintf(keystr, "%d.%d.%d.%d/32", val&0x000000ff, (val >> 8) & 0x000000ff, 
-            (val >> 16) & 0x000000ff, (val >> 24) & 0x000000ff);
-        if (p < 0) {
-            printf("Error: Could not parse string. \n");
+#if PY_MAJOR_VERSION >= 3
+    if (PyUnicode_Check(key)) {
+        int rv = PyUnicode_READY(key); 
+        if (rv < 0) { 
+            return -1;
         }
-        return keystr;
+        char* temp = PyUnicode_AsUTF8(key);
+        if (temp == NULL) {
+            return -1;
+        }
+        strcpy(keystr, temp);
+        return 0;
     }
+    if (PyLong_Check(key)) {
+        long val = htonl(PyLong_AsLong(key)); // fail?
+        snprintf(keystr, 20, "%d.%d.%d.%d/32", val&0x000000ff, (val >> 8) & 0x000000ff, 
+            (val >> 16) & 0x000000ff, (val >> 24) & 0x000000ff);
+        return 0;
+    } 
+
+#else
+    if (PyString_Check(key)) {
+        char* temp = PyString_AsString(key);
+        strcpy(keystr, temp);
+        return 0;
+    }
+    if (PyInt_Check(key)) {
+        long val = htonl(PyInt_AsLong(key));
+        snprintf(keystr, 20, "%d.%d.%d.%d/32", val&0x000000ff, (val >> 8) & 0x000000ff, 
+            (val >> 16) & 0x000000ff, (val >> 24) & 0x000000ff);
+        return 0;
+    }
+
+#endif
+    PyErr_SetString(PyExc_TypeError, "Error: Unrecognizable type as value.");
+    return (PyObject *) NULL;
 }
+
+
 
 static void
 pytricia_dealloc(PyTricia* self)
@@ -167,16 +191,10 @@ parse_cidr(const char *cidr, unsigned long *subnet, unsigned short *masklen)
 //------------------------------------------------------
 //------------------------------------------------------
 static prefix_t*
-pystr_to_prefix(/*PyObject *pystr*/char* str) // Changed to take in a string instead of a pystr.
+pystr_to_prefix(char* str) // Changed to take in a string instead of a pystr.
 {
-    /*
-    char *cstraddr = NULL;
-    if (!PyArg_Parse(pystr, "s", &cstraddr)) {
-        return NULL;
-    }
-    */
-    
-    if (!str) { // If str isn't populated for some reason.
+   
+    if (!str) { // If str isn't populated for some reason -> come back to this.
         return NULL;
     }
 
@@ -197,7 +215,12 @@ pystr_to_prefix(/*PyObject *pystr*/char* str) // Changed to take in a string ins
 static PyObject* 
 pytricia_subscript(PyTricia *self, PyObject *key)
 {
-    char* keystr = get_str(key); // Get string from PyObject.
+    char keystr[20];
+    int rv = get_str(key, keystr); // Get string from PyObject.
+    if (rv < 0) {
+        PyErr_SetString(PyExc_ValueError, "Error parsing key.");
+        return NULL;
+    }
 
     prefix_t* subnet = pystr_to_prefix(keystr);
     if (subnet == NULL) {
@@ -222,7 +245,13 @@ pytricia_subscript(PyTricia *self, PyObject *key)
 static int
 pytricia_internal_delete(PyTricia *self, PyObject *key)
 {
-    char* keystr = get_str(key); // Get string from PyObject.
+    char keystr[20];
+    int rv = get_str(key, keystr); // Get string from PyObject.
+    if (rv < 0) {
+        PyErr_SetString(PyExc_ValueError, "Error parsing key.");
+        return NULL;
+    }
+
 
     prefix_t* prefix = pystr_to_prefix(keystr);
     if (prefix == NULL) {
@@ -253,14 +282,12 @@ pytricia_assign_subscript(PyTricia *self, PyObject *key, PyObject *value)
         return pytricia_internal_delete(self, key);
     }
     
-    char *keystr = get_str(key);
-
-    /* Taken out to test possible integer functionality.
-    if (!PyArg_Parse(key, "s", &keystr)) {
-        PyErr_SetString(PyExc_ValueError, "Error parsing prefix 4.");
-        return -1;
+    char keystr[20];
+    int rv = get_str(key, keystr); // Get string from PyObject.
+    if (rv < 0) {
+        PyErr_SetString(PyExc_ValueError, "Error parsing key.");
+        return NULL;
     }
-    */
     
     patricia_node_t* node = make_and_lookup(self->m_tree, keystr);
     if (!node) {
@@ -276,11 +303,6 @@ pytricia_assign_subscript(PyTricia *self, PyObject *key, PyObject *value)
 
 static PyObject*
 pytricia_insert(PyTricia *self, PyObject *args) {
-    // When this is called it will be p[prefix] = obj.
-    // Deal with issue when type may be different - can you do "OO" to make it more generic?
-    // Python 3 has IP address & IP network object - figure out how to make this work.
-    // 1 - make parsetuple work with ints too.
-    // 2 - translate int to string. Everything is 32 bits but that's implicit.
 
     // Next thing: look at test code & how IP addresses are used - we might have to translate everything
     // in more places (ex: lookup).
@@ -295,7 +317,12 @@ pytricia_insert(PyTricia *self, PyObject *args) {
         return NULL;
     }
 
-    char* keystr = get_str(key);
+    char keystr[20];
+    int rv = get_str(key, keystr); // Get string from PyObject.
+    if (rv < 0) {
+        PyErr_SetString(PyExc_ValueError, "Error parsing key.");
+        return NULL;
+    }
 
     patricia_node_t* node = make_and_lookup(self->m_tree, keystr);
     if (!node) {
@@ -338,7 +365,12 @@ pytricia_get(register PyTricia *obj, PyObject *args)
     if (!PyArg_ParseTuple(args, "O|O:get", &key, &defvalue))
         return NULL;
 
-    char* keystr = get_str(key); // Get string from PyObject.
+    char keystr[20];
+    int rv = get_str(key, keystr); // Get string from PyObject.
+    if (rv < 0) {
+        PyErr_SetString(PyExc_ValueError, "Error parsing key.");
+        return NULL;
+    }
 
     prefix_t* prefix = pystr_to_prefix(keystr);
     if (prefix == NULL) {
@@ -365,7 +397,13 @@ pytricia_get(register PyTricia *obj, PyObject *args)
 static int
 pytricia_contains(PyTricia *self, PyObject *key)
 {
-    char* keystr = get_str(key); // Get string from PyObject.
+    char keystr[20];
+    int rv = get_str(key, keystr); // Get string from PyObject.
+    if (rv < 0) {
+        PyErr_SetString(PyExc_ValueError, "Error parsing key.");
+        return NULL;
+    }
+
     prefix_t* prefix = pystr_to_prefix(keystr);
     if (!prefix) {
         PyErr_SetString(PyExc_ValueError, "Error parsing prefix.");
@@ -387,7 +425,12 @@ pytricia_has_key(PyTricia *self, PyObject *args)
     if (!PyArg_ParseTuple(args, "O", &key))
         return NULL;
         
-    char* keystr = get_str(key); // Get string from PyObject.
+    char keystr[20];
+    int rv = get_str(key, keystr); // Get string from PyObject.
+    if (rv < 0) {
+        PyErr_SetString(PyExc_ValueError, "Error parsing key.");
+        return NULL;
+    }
 
     prefix_t* prefix = pystr_to_prefix(keystr);
     if (!prefix) {
@@ -685,7 +728,7 @@ initpytricia(void)
     m = Py_InitModule3("pytricia", NULL, pytricia_doc);
 #endif
     if (m == NULL)
-#if PY_MAJOR_VERSION >= 3 // Conditional compile statements - put python 2 specific in else block.
+#if PY_MAJOR_VERSION >= 3 
       return NULL;
 #else
       return;
