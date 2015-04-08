@@ -4,7 +4,7 @@ import pytricia
 def dumppyt(t):
     print "\nDumping Pytricia"
     for x in t.keys():
-        print "\t",x,t[x]
+        print"\t",x,t[x]
     
 class PyTriciaTests(unittest.TestCase):
     def testInit(self):
@@ -27,7 +27,27 @@ class PyTriciaTests(unittest.TestCase):
         pyt = pytricia.PyTricia()
         pyt["10.0.0.0/8"] = 'a'
         pyt["10.1.0.0/16"] = 'b'
-        # dumppyt(pyt)
+
+        pyt[167838211] = 'x' # 10.1.2.3 in int representation (from hex 0a010203 -> int)
+        self.assertTrue('10.1.2.3' in pyt)
+
+        # pyt[True] = 'y' # should cause type error but instead counts as just 1?
+
+        pyt["10.1.2.4/50"] = "banana" # Defaults to assuming 32 for anything not in between 0-32, inclusive.
+        self.assertTrue('10.1.2.4' in pyt)
+
+        # No --- the following absolutely should work.  prefix
+        # length can be 1 -> 32
+        pyt["10.1.2.5/17"] = "peanut" # If not 8/16/32 -> doesn't work correctly?
+        self.assertTrue(pyt.has_key('10.1.2.5/17'))
+
+        pyt[""] = "blank" #doesn't work if you pass in nothing.
+
+        pyt["astring"] = "astring" # doesn't work if you pass in a string that doesn't convert to int.
+
+        pyt[878465784678368736873648763785638745] = "toolong" # doesn't work if an int is too long.
+
+        pyt[long(167838211)] = 'x' # doesn't work if you pass in an explicit long for Python 2.
 
         self.assertEqual(pyt["10.0.0.0/8"], 'a')
         self.assertEqual(pyt["10.1.0.0/16"], 'b')

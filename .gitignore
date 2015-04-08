@@ -1,6 +1,4 @@
 .DS_Store
-.DS_Store?
-Thumbs.db
 *.pyc
 __pycache__
 update.sh
