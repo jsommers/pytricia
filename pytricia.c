@@ -37,10 +37,8 @@ typedef struct {
 } PyTriciaIter;
 
 // Takes a PyObject and fills the string buffer for useage. Returns -1 on error, 0 on success.
-static int get_str(PyObject* key, char* keystr) {
-
-    // Make it all stack allocated -> create char[20], possibly return error code.
-
+static int get_str(PyObject* key, char keystr[20]) {
+    memset(keystr, 0, 20); 
 #if PY_MAJOR_VERSION >= 3
     if (PyUnicode_Check(key)) {
         int rv = PyUnicode_READY(key); 
@@ -54,29 +52,40 @@ static int get_str(PyObject* key, char* keystr) {
         strcpy(keystr, temp);
         return 0;
     }
-    if (PyLong_Check(key)) {
-        long val = htonl(PyLong_AsLong(key)); // fail?
-        snprintf(keystr, 20, "%d.%d.%d.%d/32", val&0x000000ff, (val >> 8) & 0x000000ff, 
-            (val >> 16) & 0x000000ff, (val >> 24) & 0x000000ff);
+    else if (PyLong_Check(key)) {
+        long val = htonl(PyLong_AsLong(key));
+        snprintf(keystr, 20, "%lu.%lu.%lu.%lu/32", 
+          val & 0x000000ff, 
+          (val >> 8) & 0x000000ff, 
+          (val >> 16) & 0x000000ff, 
+          (val >> 24) & 0x000000ff);
         return 0;
     } 
+#if PY_MINOR_VERSION >= 4
+    // do we have an IPv4Address or IPv4Network object (ipaddress
+    // module added in Python 3.4
 
+
+#endif
 #else
     if (PyString_Check(key)) {
         char* temp = PyString_AsString(key);
         strcpy(keystr, temp);
         return 0;
     }
-    if (PyInt_Check(key)) {
+    else if (PyInt_Check(key)) {
         long val = htonl(PyInt_AsLong(key));
-        snprintf(keystr, 20, "%d.%d.%d.%d/32", val&0x000000ff, (val >> 8) & 0x000000ff, 
-            (val >> 16) & 0x000000ff, (val >> 24) & 0x000000ff);
+        snprintf(keystr, 20, "%lu.%lu.%lu.%lu/32", 
+          val & 0x000000ff, 
+          (val >> 8) & 0x000000ff, 
+          (val >> 16) & 0x000000ff, 
+          (val >> 24) & 0x000000ff);
         return 0;
     }
-
 #endif
-    PyErr_SetString(PyExc_TypeError, "Error: Unrecognizable type as value.");
-    return (PyObject *) NULL;
+    return -1;
+    // PyErr_SetString(PyExc_TypeError, "Error: Unrecognizable type as value.");
+    // return (PyObject *) NULL;
 }
 
 
@@ -186,14 +195,13 @@ parse_cidr(const char *cidr, unsigned long *subnet, unsigned short *masklen)
 static prefix_t*
 pystr_to_prefix(char* str) // Changed to take in a string instead of a pystr.
 {
-   
     if (!str) { // If str isn't populated for some reason -> come back to this.
         return NULL;
     }
 
     unsigned long subnet = 0UL;
     unsigned short mask = 0;
-    if (parse_cidr(cstraddr, &subnet, &mask)) {
+    if (parse_cidr(str, &subnet, &mask)) {
         return NULL;
     }
     
@@ -204,7 +212,7 @@ static PyObject*
 pytricia_subscript(PyTricia *self, PyObject *key)
 {
     char keystr[20];
-    int rv = get_str(key, keystr); // Get string from PyObject.
+    int rv = get_str(key, keystr); 
     if (rv < 0) {
         PyErr_SetString(PyExc_ValueError, "Error parsing key.");
         return NULL;
@@ -234,10 +242,10 @@ static int
 pytricia_internal_delete(PyTricia *self, PyObject *key)
 {
     char keystr[20];
-    int rv = get_str(key, keystr); // Get string from PyObject.
+    int rv = get_str(key, keystr); 
     if (rv < 0) {
         PyErr_SetString(PyExc_ValueError, "Error parsing key.");
-        return NULL;
+        return -1;
     }
 
 
@@ -271,10 +279,10 @@ pytricia_assign_subscript(PyTricia *self, PyObject *key, PyObject *value)
     }
     
     char keystr[20];
-    int rv = get_str(key, keystr); // Get string from PyObject.
+    int rv = get_str(key, keystr); 
     if (rv < 0) {
         PyErr_SetString(PyExc_ValueError, "Error parsing key.");
-        return NULL;
+        return -1;
     }
     
     patricia_node_t* node = make_and_lookup(self->m_tree, keystr);
@@ -300,12 +308,12 @@ pytricia_insert(PyTricia *self, PyObject *args) {
 
     PyObject *key = NULL;
     PyObject *value = NULL;
-    if (!PyArg_ParseTuple(args, "sO", &keystr, &value)) {
+    if (!PyArg_ParseTuple(args, "sO", &key, &value)) {
         return NULL;
     }
 
     char keystr[20];
-    int rv = get_str(key, keystr); // Get string from PyObject.
+    int rv = get_str(key, keystr); 
     if (rv < 0) {
         PyErr_SetString(PyExc_ValueError, "Error parsing key.");
         return NULL;
@@ -353,7 +361,7 @@ pytricia_get(register PyTricia *obj, PyObject *args)
         return NULL;
 
     char keystr[20];
-    int rv = get_str(key, keystr); // Get string from PyObject.
+    int rv = get_str(key, keystr); 
     if (rv < 0) {
         PyErr_SetString(PyExc_ValueError, "Error parsing key.");
         return NULL;
@@ -385,10 +393,10 @@ static int
 pytricia_contains(PyTricia *self, PyObject *key)
 {
     char keystr[20];
-    int rv = get_str(key, keystr); // Get string from PyObject.
+    int rv = get_str(key, keystr); 
     if (rv < 0) {
         PyErr_SetString(PyExc_ValueError, "Error parsing key.");
-        return NULL;
+        return -1;
     }
 
     prefix_t* prefix = pystr_to_prefix(keystr);
@@ -413,7 +421,7 @@ pytricia_has_key(PyTricia *self, PyObject *args)
         return NULL;
         
     char keystr[20];
-    int rv = get_str(key, keystr); // Get string from PyObject.
+    int rv = get_str(key, keystr); 
     if (rv < 0) {
         PyErr_SetString(PyExc_ValueError, "Error parsing key.");
         return NULL;
