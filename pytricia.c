@@ -34,11 +34,28 @@ typedef struct {
     patricia_node_t **m_Xstack;
     patricia_node_t **m_Xsp;
     patricia_node_t *m_Xrn;
+    PyTricia *m_parent;
 } PyTriciaIter;
 
-// Takes a PyObject and fills the string buffer for useage. Returns -1 on error, 0 on success.
-static int get_str(PyObject* key, char keystr[20]) {
-    memset(keystr, 0, 20); 
+static const int ADDRSTRLEN = 32;
+
+static void *inet_ntop_with_prefix(int family, const void *src, char *dst, int bufflen) {
+    if (inet_ntop(family, src, dst, bufflen) == NULL) {
+        return NULL;
+    }
+    strlcat(dst, "/32", bufflen);
+    return dst;
+}
+
+
+/*
+ * Convert a Pytricia key to a string representation that can be converted,
+ * eventually, to a to prefix_t for use in the Pytricia structure.
+ * return 0 on success, -1 on failure.
+ */
+static int convert_key_to_cstring(PyObject* key, char keystr[ADDRSTRLEN]) {
+    memset(keystr, 0, ADDRSTRLEN); 
+
 #if PY_MAJOR_VERSION >= 3
     if (PyUnicode_Check(key)) {
         int rv = PyUnicode_READY(key); 
@@ -49,17 +66,11 @@ static int get_str(PyObject* key, char keystr[20]) {
         if (temp == NULL) {
             return -1;
         }
-        strcpy(keystr, temp);
+        strlcpy(keystr, temp, ADDRSTRLEN);
         return 0;
-    }
-    else if (PyLong_Check(key)) {
+    } else if (PyLong_Check(key)) {
         long val = htonl(PyLong_AsLong(key));
-        snprintf(keystr, 20, "%lu.%lu.%lu.%lu/32", 
-          val & 0x000000ff, 
-          (val >> 8) & 0x000000ff, 
-          (val >> 16) & 0x000000ff, 
-          (val >> 24) & 0x000000ff);
-        return 0;
+        return (inet_ntop_with_prefix(AF_INET, &val, keystr, ADDRSTRLEN) == NULL);
     } 
 #if PY_MINOR_VERSION >= 4
     // do we have an IPv4Address or IPv4Network object (ipaddress
@@ -67,25 +78,18 @@ static int get_str(PyObject* key, char keystr[20]) {
 
 
 #endif
-#else
+
+#else // Python v2
     if (PyString_Check(key)) {
         char* temp = PyString_AsString(key);
-        strcpy(keystr, temp);
+        strlcpy(keystr, temp, ADDRSTRLEN);
         return 0;
-    }
-    else if (PyInt_Check(key)) {
+    } else if (PyInt_Check(key)) {
         long val = htonl(PyInt_AsLong(key));
-        snprintf(keystr, 20, "%lu.%lu.%lu.%lu/32", 
-          val & 0x000000ff, 
-          (val >> 8) & 0x000000ff, 
-          (val >> 16) & 0x000000ff, 
-          (val >> 24) & 0x000000ff);
-        return 0;
+        return (inet_ntop_with_prefix(AF_INET, &val, keystr, ADDRSTRLEN) == NULL);
     }
 #endif
     return -1;
-    // PyErr_SetString(PyExc_TypeError, "Error: Unrecognizable type as value.");
-    // return (PyObject *) NULL;
 }
 
 
@@ -211,8 +215,8 @@ pystr_to_prefix(char* str) // Changed to take in a string instead of a pystr.
 static PyObject* 
 pytricia_subscript(PyTricia *self, PyObject *key)
 {
-    char keystr[20];
-    int rv = get_str(key, keystr); 
+    char keystr[ADDRSTRLEN];
+    int rv = convert_key_to_cstring(key, keystr); 
     if (rv < 0) {
         PyErr_SetString(PyExc_ValueError, "Error parsing key.");
         return NULL;
@@ -241,8 +245,8 @@ pytricia_subscript(PyTricia *self, PyObject *key)
 static int
 pytricia_internal_delete(PyTricia *self, PyObject *key)
 {
-    char keystr[20];
-    int rv = get_str(key, keystr); 
+    char keystr[ADDRSTRLEN];
+    int rv = convert_key_to_cstring(key, keystr); 
     if (rv < 0) {
         PyErr_SetString(PyExc_ValueError, "Error parsing key.");
         return -1;
@@ -278,8 +282,8 @@ pytricia_assign_subscript(PyTricia *self, PyObject *key, PyObject *value)
         return pytricia_internal_delete(self, key);
     }
     
-    char keystr[20];
-    int rv = get_str(key, keystr); 
+    char keystr[ADDRSTRLEN];
+    int rv = convert_key_to_cstring(key, keystr); 
     if (rv < 0) {
         PyErr_SetString(PyExc_ValueError, "Error parsing key.");
         return -1;
@@ -312,8 +316,8 @@ pytricia_insert(PyTricia *self, PyObject *args) {
         return NULL;
     }
 
-    char keystr[20];
-    int rv = get_str(key, keystr); 
+    char keystr[ADDRSTRLEN];
+    int rv = convert_key_to_cstring(key, keystr); 
     if (rv < 0) {
         PyErr_SetString(PyExc_ValueError, "Error parsing key.");
         return NULL;
@@ -360,8 +364,8 @@ pytricia_get(register PyTricia *obj, PyObject *args)
     if (!PyArg_ParseTuple(args, "O|O:get", &key, &defvalue))
         return NULL;
 
-    char keystr[20];
-    int rv = get_str(key, keystr); 
+    char keystr[ADDRSTRLEN];
+    int rv = convert_key_to_cstring(key, keystr); 
     if (rv < 0) {
         PyErr_SetString(PyExc_ValueError, "Error parsing key.");
         return NULL;
@@ -392,8 +396,8 @@ pytricia_get(register PyTricia *obj, PyObject *args)
 static int
 pytricia_contains(PyTricia *self, PyObject *key)
 {
-    char keystr[20];
-    int rv = get_str(key, keystr); 
+    char keystr[ADDRSTRLEN];
+    int rv = convert_key_to_cstring(key, keystr); 
     if (rv < 0) {
         PyErr_SetString(PyExc_ValueError, "Error parsing key.");
         return -1;
@@ -420,8 +424,8 @@ pytricia_has_key(PyTricia *self, PyObject *args)
     if (!PyArg_ParseTuple(args, "O", &key))
         return NULL;
         
-    char keystr[20];
-    int rv = get_str(key, keystr); 
+    char keystr[ADDRSTRLEN];
+    int rv = convert_key_to_cstring(key, keystr); 
     if (rv < 0) {
         PyErr_SetString(PyExc_ValueError, "Error parsing key.");
         return NULL;
@@ -553,9 +557,7 @@ pytriciaiter_dealloc(PyTriciaIter *iterobj)
     if (iterobj->m_Xstack) {
         free(iterobj->m_Xstack);
     }
-    if (iterobj->m_tree) {
-        Py_DECREF(iterobj->m_tree);
-    }
+    Py_DECREF(iterobj->m_parent);
     Py_TYPE(iterobj)->tp_free((PyObject*)iterobj);    
 }
 
@@ -649,13 +651,15 @@ pytricia_iter(register PyTricia *self, PyObject *unused)
         return NULL;
     }
 
-    iterobj->m_tree = self->m_tree;
     Py_INCREF(self);
+    iterobj->m_parent = self;
+
+    iterobj->m_tree = self->m_tree;
     iterobj->m_Xnode = NULL;
     iterobj->m_Xhead = iterobj->m_tree->head;
     iterobj->m_Xstack = (patricia_node_t**) malloc(sizeof(patricia_node_t*)*(PATRICIA_MAXBITS+1));
     if (!iterobj->m_Xstack) {
-        Py_DECREF(self);
+        Py_DECREF(iterobj->m_parent);
         Py_TYPE(iterobj)->tp_free((PyObject*)iterobj);
         return PyErr_NoMemory();
     }
@@ -729,9 +733,8 @@ initpytricia(void)
     Py_INCREF(&PyTriciaIterType);
     PyModule_AddObject(m, "PyTricia", (PyObject *)&PyTriciaType);
 
-    // JS: don't add this object to the public interface.  users shouldn't be
+    // JS: don't add the PyTriciaIter object to the public interface.  users shouldn't be
     // able to create iterator objects w/o calling __iter__ on a pytricia object.
-    // PyModule_AddObject(m, "PyTriciaIter", (PyObject *)&PyTriciaIterType);
 
 #if PY_MAJOR_VERSION >= 3
     return m;

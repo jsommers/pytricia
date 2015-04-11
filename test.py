@@ -1,10 +1,12 @@
+from __future__ import print_function
+
 import unittest
 import pytricia
 
 def dumppyt(t):
-    print "\nDumping Pytricia"
+    print ("\nDumping Pytricia")
     for x in t.keys():
-        print"\t",x,t[x]
+        print("\t",x,t[x])
     
 class PyTriciaTests(unittest.TestCase):
     def testInit(self):
