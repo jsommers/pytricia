@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import pytricia
 import radix
 import SubnetTree
@@ -71,17 +73,17 @@ def main():
     t = Timer("runtestpt()", "from __main__ import runtestpt")
     v = t.timeit(number=10)
     v = v / 10.0
-    print "Average execution time for PyTricia:",v
+    print ("Average execution time for PyTricia:",v)
 
     t = Timer("runtestradix()", "from __main__ import runtestradix")
     v = t.timeit(number=10)
     v = v / 10.0
-    print "Average execution time for radix:",v
+    print ("Average execution time for radix:",v)
 
     t = Timer("runtestsubnet()", "from __main__ import runtestsubnet")
     v = t.timeit(number=10)
     v = v / 10.0
-    print "Average execution time for subnet:",v
+    print ("Average execution time for subnet:",v)
 
 if __name__ == '__main__':
     main()

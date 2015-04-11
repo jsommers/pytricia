@@ -62,9 +62,9 @@ class PyTriciaTests(unittest.TestCase):
         pyt = pytricia.PyTricia()
 
         # ipint = socket.inet_aton('10.1.2.3')
-
         # xdict = {'does it':'work?'}
         # pyt[ipint] = xdict
+
         # self.assertTrue('10.1.2.3' in pyt)
         # self.assertEqual(pyt['10.1.2.3'], xdict)
 
