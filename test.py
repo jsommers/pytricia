@@ -6,7 +6,7 @@ import pytricia
 def dumppyt(t):
     print ("\nDumping Pytricia")
     for x in t.keys():
-        print("\t",x,t[x])
+        print ("\t",x,t[x])
     
 class PyTriciaTests(unittest.TestCase):
     def testInit(self):
@@ -29,27 +29,6 @@ class PyTriciaTests(unittest.TestCase):
         pyt = pytricia.PyTricia()
         pyt["10.0.0.0/8"] = 'a'
         pyt["10.1.0.0/16"] = 'b'
-
-        pyt[167838211] = 'x' # 10.1.2.3 in int representation (from hex 0a010203 -> int)
-        self.assertTrue('10.1.2.3' in pyt)
-
-        # pyt[True] = 'y' # should cause type error but instead counts as just 1?
-
-        pyt["10.1.2.4/50"] = "banana" # Defaults to assuming 32 for anything not in between 0-32, inclusive.
-        self.assertTrue('10.1.2.4' in pyt)
-
-        # No --- the following absolutely should work.  prefix
-        # length can be 1 -> 32
-        pyt["10.1.2.5/17"] = "peanut" # If not 8/16/32 -> doesn't work correctly?
-        self.assertTrue(pyt.has_key('10.1.2.5/17'))
-
-        pyt[""] = "blank" #doesn't work if you pass in nothing.
-
-        pyt["astring"] = "astring" # doesn't work if you pass in a string that doesn't convert to int.
-
-        pyt[878465784678368736873648763785638745] = "toolong" # doesn't work if an int is too long.
-
-        pyt[long(167838211)] = 'x' # doesn't work if you pass in an explicit long for Python 2.
 
         self.assertEqual(pyt["10.0.0.0/8"], 'a')
         self.assertEqual(pyt["10.1.0.0/16"], 'b')
@@ -76,7 +55,30 @@ class PyTriciaTests(unittest.TestCase):
         self.assertFalse(pyt.has_key('9.0.0.0/8'))
         self.assertFalse(pyt.has_key('10.0.0.0'))
 
-        self.assertItemsEqual(['10.0.0.0/8','10.1.0.0/16'], pyt.keys())
+        self.assertListEqual(sorted(['10.0.0.0/8','10.1.0.0/16']), sorted(pyt.keys()))
+
+    def testNonStringKey(self):
+        pyt[167838211] = 'x' # 10.1.2.3 in int representation (from hex 0a010203 -> int)
+        self.assertTrue('10.1.2.3' in pyt)
+
+        # pyt[True] = 'y' # should cause type error but instead counts as just 1?
+
+        pyt["10.1.2.4/50"] = "banana" # Defaults to assuming 32 for anything not in between 0-32, inclusive.
+        self.assertTrue('10.1.2.4' in pyt)
+
+        # No --- the following absolutely should work.  prefix
+        # length can be 1 -> 32
+        pyt["10.1.2.5/17"] = "peanut" # If not 8/16/32 -> doesn't work correctly?
+        self.assertTrue(pyt.has_key('10.1.2.5/17'))
+
+        pyt[""] = "blank" #doesn't work if you pass in nothing.
+
+        pyt["astring"] = "astring" # doesn't work if you pass in a string that doesn't convert to int.
+
+        pyt[878465784678368736873648763785638745] = "toolong" # doesn't work if an int is too long.
+
+        pyt[long(167838211)] = 'x' # doesn't work if you pass in an explicit long for Python 2.
+
 
     def testMoreComplex(self):
         pyt = pytricia.PyTricia()
@@ -85,29 +87,37 @@ class PyTriciaTests(unittest.TestCase):
         pyt["10.0.1.0/24"] = 'c'
         pyt["0.0.0.0/0"] = 'default route'
 
-        # dumppyt(pyt)
-        # FIXME: make some more tests
-        self.assertFalse(pyt.has_key('1.0.0.0/8'))
 
+        self.assertEqual(pyt['10.0.0.1/32'], 'a')
+        self.assertEqual(pyt['10.0.0.1'], 'a')
+
+        self.assertFalse(pyt.has_key('1.0.0.0/8'))
+        # with 0.0.0.0/0, everything should be 'in'
+        for i in range(256):
+            self.assertTrue('{}.2.3.4'.format(i) in pyt)
+            # default for all but 10.0.0.0/8
+            if i != 10:
+                self.assertEqual(pyt['{}.2.3.4'.format(i)], 'default route')
+        
     def testInsertRemove(self):
         pyt = pytricia.PyTricia()
 
         pyt['10.0.0.0/8'] = list(range(10))
-        self.assertItemsEqual(['10.0.0.0/8'], pyt.keys())
+        self.assertListEqual(['10.0.0.0/8'], pyt.keys())
         pyt.delete('10.0.0.0/8')
-        self.assertItemsEqual([], pyt.keys())
+        self.assertListEqual([], pyt.keys())
         self.assertFalse(pyt.has_key('10.0.0.0/8'))
 
         pyt['10.0.0.0/8'] = list(range(10))
-        self.assertItemsEqual(['10.0.0.0/8'], pyt.keys())
+        self.assertListEqual(['10.0.0.0/8'], pyt.keys())
         pyt.delete('10.0.0.0/8')
-        self.assertItemsEqual([], pyt.keys())
+        self.assertListEqual([], pyt.keys())
         self.assertFalse(pyt.has_key('10.0.0.0/8'))
 
         pyt['10.0.0.0/8'] = list(range(10))
-        self.assertItemsEqual(['10.0.0.0/8'], pyt.keys())
+        self.assertListEqual(['10.0.0.0/8'], pyt.keys())
         del pyt['10.0.0.0/8']
-        self.assertItemsEqual([], pyt.keys())
+        self.assertListEqual([], pyt.keys())
         self.assertFalse(pyt.has_key('10.0.0.0/8'))
 
         with self.assertRaises(KeyError) as cm:
@@ -122,9 +132,27 @@ class PyTriciaTests(unittest.TestCase):
         pyt["10.0.0.0/8"] = 'a'
         pyt["10.0.1.0/24"] = 'c'
         pyt["0.0.0.0/0"] = 'default route'
-        self.assertItemsEqual(['0.0.0.0/0', '10.0.0.0/8','10.1.0.0/16','10.0.1.0/24'], list(pyt.__iter__()))
-        # self.assertItemsEqual(['0.0.0.0/0', '10.0.0.0/8','10.1.0.0/16','10.0.1.0/24'], list(iter(pyt)))
- 
+        self.assertListEqual(sorted(['0.0.0.0/0', '10.0.0.0/8','10.1.0.0/16','10.0.1.0/24']), sorted(list(pyt.__iter__())))
+        # self.assertListEqual(sorted(['0.0.0.0/0', '10.0.0.0/8','10.1.0.0/16','10.0.1.0/24']), sorted(list(iter(pyt))))
+
+    def testIteration2(self):
+        pyt = pytricia.PyTricia()
+        pyt["10.1.0.0/16"] = 'b'
+        pyt["10.0.0.0/8"] = 'a'
+        pyt["10.0.1.0/24"] = 'c'
+        x = iter(pyt)
+        self.assertIsNotNone(next(x))
+        self.assertIsNotNone(next(x))
+        self.assertIsNotNone(next(x))
+        self.assertRaises(StopIteration, next, x)
+        self.assertRaises(StopIteration, next, x)
+
+    def testMultipleIter(self):
+        pyt = pytricia.PyTricia()
+        pyt["10.0.0.0/8"] = 0
+        for i in range(10):
+            self.assertListEqual(['10.0.0.0/8'], list(pyt))
+            self.assertListEqual(['10.0.0.0/8'], list(pyt.keys()))
 
 # tests should cover:
 # get w,w/o default, has_key, keys, in, [] access, [] assigment
