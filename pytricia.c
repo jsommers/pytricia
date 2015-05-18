@@ -263,7 +263,7 @@ pytricia_internal_delete(PyTricia *self, PyObject *key)
     Deref_Prefix(prefix);
 
     if (!node) {
-        PyErr_SetString(PyExc_KeyError, "Prefix doesn't exist.  Can't delete it.");
+        PyErr_SetString(PyExc_KeyError, "Prefix doesn't exist.");
         return -1;
     }
 
