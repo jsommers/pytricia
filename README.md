@@ -21,14 +21,14 @@ This code is beta quality at present but has been tested on OS X 10.10 and Ubunt
 
 # Examples
 
-Create a pytricia object and load a couple prefixes into it::
+Create a pytricia object and load a couple prefixes into it:
 
     >>> import pytricia
     >>> pyt = pytricia.PyTricia()
     >>> pyt["10.0.0.0/8"] = 'a'
     >>> pyt["10.1.0.0/16"] = 'b'
 
-Use standard dictionary-like access to do longest prefix match lookup::
+Use standard dictionary-like access to do longest prefix match lookup:
 
     >>> pyt["10.0.0.0/8"]
     a
@@ -37,7 +37,7 @@ Use standard dictionary-like access to do longest prefix match lookup::
     >>> pyt["10.1.0.0/24"]
     b
 
-Alternatively, use the ``get`` method::
+Alternatively, use the ``get`` method:
 
     >>> pyt.get("10.1.0.0/16")
     'b'
@@ -48,7 +48,7 @@ Alternatively, use the ``get`` method::
     >>> pyt.get("10.0.0.0/24")
     'a'
 
-The ``del`` operator works as expected (there is also a ``delete`` method that works similarly)::
+The ``del`` operator works as expected (there is also a ``delete`` method that works similarly):
 
     >>> del pyt["10.0.0.0/8"]
     >>> pyt.get("10.1.0.0/16")
@@ -59,11 +59,12 @@ The ``del`` operator works as expected (there is also a ``delete`` method that w
     KeyError: "Prefix doesn't exist."
     >>> 
 
-``PyTricia`` objects can be iterated or coerced into a list::
+``PyTricia`` objects can be iterated or coerced into a list:
+
     >>> list(pyt)
     ['10.0.0.0/8', '10.1.0.0/16']
 
-The ``in`` operator can be used to test whether a prefix is contained in the ``PyTricia`` object, or whether an individual address is "covered" by a prefix::
+The ``in`` operator can be used to test whether a prefix is contained in the ``PyTricia`` object, or whether an individual address is "covered" by a prefix:
 
     >>> '10.0.0.0/8' in pyt
     True
@@ -77,7 +78,7 @@ The ``in`` operator can be used to test whether a prefix is contained in the ``P
     True
     >>> 
 
-A ``PyTricia`` object is *almost* like a dictionary, but not quite.   You can extract the keys, but not the values::
+A ``PyTricia`` object is *almost* like a dictionary, but not quite.   You can extract the keys, but not the values:
 
     >>> pyt.keys()
     ['10.0.0.0/8', '10.1.0.0/16']
@@ -88,7 +89,7 @@ A ``PyTricia`` object is *almost* like a dictionary, but not quite.   You can ex
 
 # Performance
 
-The numbers below are based on running the program ``perftest.py`` (in the repo) against snapshots of py-radix and pysubnettree from May 1, 2015.  All tests were run in Python 2.7.6 on a Linux 3.13 kernel system (Ubuntu 14.04 server) which has 12 cores (Intel Xeon E5645 2.4GHz) and was very lightly loaded at the time of the test. ::
+The numbers below are based on running the program ``perftest.py`` (in the repo) against snapshots of py-radix and pysubnettree from May 1, 2015.  All tests were run in Python 2.7.6 on a Linux 3.13 kernel system (Ubuntu 14.04 server) which has 12 cores (Intel Xeon E5645 2.4GHz) and was very lightly loaded at the time of the test.
 
     $ python perftest.py 
     Average execution time for PyTricia: 0.884083390236
