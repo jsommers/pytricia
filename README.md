@@ -29,6 +29,7 @@ Create a pytricia object and load a couple prefixes into it::
     >>> pyt["10.1.0.0/16"] = 'b'
 
 Use standard dictionary-like access to do longest prefix match lookup::
+
     >>> pyt["10.0.0.0/8"]
     a
     >>> pyt["10.1.0.0/16"]
@@ -37,6 +38,7 @@ Use standard dictionary-like access to do longest prefix match lookup::
     b
 
 Alternatively, use the ``get`` method::
+
     >>> pyt.get("10.1.0.0/16")
     'b'
     >>> pyt.get("10.1.0.0/24")
@@ -62,6 +64,7 @@ The ``del`` operator works as expected (there is also a ``delete`` method that w
     ['10.0.0.0/8', '10.1.0.0/16']
 
 The ``in`` operator can be used to test whether a prefix is contained in the ``PyTricia`` object, or whether an individual address is "covered" by a prefix::
+
     >>> '10.0.0.0/8' in pyt
     True
     >>> '10.2.0.0/8' in pyt
