@@ -43,7 +43,7 @@ static void *inet_ntop_with_prefix(int family, const void *src, char *dst, int b
     if (inet_ntop(family, src, dst, bufflen) == NULL) {
         return NULL;
     }
-    strlcat(dst, "/32", bufflen);
+    strncat(dst, "/32", bufflen);
     return dst;
 }
 
@@ -66,7 +66,7 @@ static int convert_key_to_cstring(PyObject* key, char keystr[ADDRSTRLEN]) {
         if (temp == NULL) {
             return -1;
         }
-        strlcpy(keystr, temp, ADDRSTRLEN);
+        strncpy(keystr, temp, ADDRSTRLEN);
         return 0;
     } else if (PyLong_Check(key)) {
         long val = htonl(PyLong_AsLong(key));
@@ -82,7 +82,7 @@ static int convert_key_to_cstring(PyObject* key, char keystr[ADDRSTRLEN]) {
 #else // Python v2
     if (PyString_Check(key)) {
         char* temp = PyString_AsString(key);
-        strlcpy(keystr, temp, ADDRSTRLEN);
+        strncpy(keystr, temp, ADDRSTRLEN);
         return 0;
     } else if (PyInt_Check(key)) {
         long val = htonl(PyInt_AsLong(key));
