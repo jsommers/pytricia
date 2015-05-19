@@ -303,40 +303,19 @@ pytricia_assign_subscript(PyTricia *self, PyObject *key, PyObject *value)
 
 static PyObject*
 pytricia_insert(PyTricia *self, PyObject *args) {
-    // Next thing: look at test code & how IP addresses are used - we might have to translate everything
-    // in more places (ex: lookup).
-
-    // Figure out how Python 3 objects work.
-    // HOW TO FIGURE OUT WHAT AN OBJECT IS?!?!
-
-
     PyObject *key = NULL;
     PyObject *value = NULL;
-    if (!PyArg_ParseTuple(args, "sO", &key, &value)) {
+
+    if (!PyArg_ParseTuple(args, "OO", &key, &value)) { 
         return NULL;
     }
 
-    char keystr[ADDRSTRLEN];
-    int rv = convert_key_to_cstring(key, keystr); 
-    if (rv < 0) {
-        PyErr_SetString(PyExc_ValueError, "Error parsing key.");
+    int rv = pytricia_assign_subscript(self, key, value);
+    if (rv == -1) {
         return NULL;
     }
 
-    patricia_node_t* node = make_and_lookup(self->m_tree, keystr);
-    if (!node) {
-        PyErr_SetString(PyExc_ValueError, "Error inserting into patricia tree");
-        return NULL;
-    }
-
-    // two increments of refcounts: value is stored in patricia tree,
-    // as well as passed back to caller.
-
-    Py_INCREF(value);
-    node->data = value;
-
-    Py_INCREF(value);
-    return value;
+    Py_RETURN_NONE;
 }
 
 static PyObject*
@@ -361,8 +340,9 @@ pytricia_get(register PyTricia *obj, PyObject *args)
     PyObject *key = NULL;
     PyObject *defvalue = NULL;
 
-    if (!PyArg_ParseTuple(args, "O|O:get", &key, &defvalue))
+    if (!PyArg_ParseTuple(args, "O|O:get", &key, &defvalue)) {
         return NULL;
+    }
 
     char keystr[ADDRSTRLEN];
     int rv = convert_key_to_cstring(key, keystr); 

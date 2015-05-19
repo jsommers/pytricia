@@ -161,9 +161,19 @@ class PyTriciaTests(unittest.TestCase):
             self.assertListEqual(['10.0.0.0/8'], list(pyt))
             self.assertListEqual(['10.0.0.0/8'], list(pyt.keys()))
 
-# tests should cover:
-# get w,w/o default, has_key, keys, in, [] access, [] assigment
+    def testInsert(self):
+        pyt = pytricia.PyTricia()
+        val = pyt.insert("10.0.0.0/8", "a")
+        self.assertIs(val, None)
+        self.assertEqual(len(pyt), 1)
+        self.assertEqual(pyt["10.0.0.0/8"], "a")
+        self.assertIn("10.0.0.1", pyt)
 
+    def testGet(self):
+        pyt = pytricia.PyTricia()
+        pyt.insert("10.0.0.0/8", "a")
+        self.assertEqual(pyt.get("10.0.0.0/8", "X"), "a")
+        self.assertEqual(pyt.get("11.0.0.0/8", "X"), "X")
 
 if __name__ == '__main__':
     unittest.main()

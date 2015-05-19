@@ -28,6 +28,10 @@ Create a pytricia object and load a couple prefixes into it:
     >>> pyt["10.0.0.0/8"] = 'a'
     >>> pyt["10.1.0.0/16"] = 'b'
 
+The ``insert`` method can also be used to add prefixes/values to a PyTricia object.  This method returns ``None``.
+
+    >>> pyt.insert("10.2.0.0/16", "c")
+
 Use standard dictionary-like access to do longest prefix match lookup:
 
     >>> pyt["10.0.0.0/8"]
@@ -48,7 +52,7 @@ Alternatively, use the ``get`` method:
     >>> pyt.get("10.0.0.0/24")
     'a'
 
-The ``del`` operator works as expected (there is also a ``delete`` method that works similarly):
+The ``del`` operator works as it does with Python dictionaries (and there is also a ``delete`` method that works similarly):
 
     >>> del pyt["10.0.0.0/8"]
     >>> pyt.get("10.1.0.0/16")
@@ -57,7 +61,8 @@ The ``del`` operator works as expected (there is also a ``delete`` method that w
     Traceback (most recent call last):
       File "<stdin>", line 1, in <module>
     KeyError: "Prefix doesn't exist."
-    >>> 
+    >>> pyt.delete("10.2.0.0/16")
+    >>>
 
 ``PyTricia`` objects can be iterated or coerced into a list:
 
@@ -86,6 +91,7 @@ A ``PyTricia`` object is *almost* like a dictionary, but not quite.   You can ex
     Traceback (most recent call last):
       File "<stdin>", line 1, in <module>
     AttributeError: 'pytricia.PyTricia' object has no attribute 'values'
+
 
 # Performance
 
