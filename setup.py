@@ -9,7 +9,7 @@ setup(name="pytricia",
       keywords=['patricia tree','IP addresses'],
       classifiers=[
               "Programming Language :: Python",
-              "Development Status :: 1 - Beta",
+              "Development Status :: 4 - Beta",
               "Intended Audience :: Developers",
               "License :: OSI Approved :: GNU General Public License v2 (GPLv2)",
               "Operating System :: OS Independent",
