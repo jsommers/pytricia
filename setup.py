@@ -1,6 +1,6 @@
 from distutils.core import setup, Extension
 setup(name="pytricia", 
-      version="0.1",
+      version="0.2",
       description="An efficient IP address storage and lookup module for Python.",
       author="Joel Sommers",
       author_email="jsommers@acm.org",
@@ -9,7 +9,7 @@ setup(name="pytricia",
       keywords=['patricia tree','IP addresses'],
       classifiers=[
               "Programming Language :: Python",
-              "Development Status :: 3 - Alpha",
+              "Development Status :: 1 - Beta",
               "Intended Audience :: Developers",
               "License :: OSI Approved :: GNU General Public License v2 (GPLv2)",
               "Operating System :: OS Independent",
