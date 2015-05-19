@@ -306,13 +306,13 @@ New_Prefix (int family, void *dest, int bitlen)
 prefix_t *
 ascii2prefix (int family, char *string)
 {
-    u_long bitlen, maxbitlen = 0;
-    char *cp;
+    u_long bitlen = 0, maxbitlen = 0;
+    char *cp = NULL;
     struct in_addr sin;
 #ifdef HAVE_IPV6
     struct in6_addr sin6;
 #endif /* HAVE_IPV6 */
-    int result;
+    int result = 0;
     char save[MAXLINE];
 
     if (string == NULL)
