@@ -53,8 +53,7 @@
 
 #include <sys/types.h>
 
-/* typedef unsigned int u_int; */
-typedef void (*void_fn_t)();
+
 /* { from defs.h */
 #define prefix_touchar(prefix) ((u_char *)&(prefix)->add.sin)
 #define MAXLINE 1024
@@ -90,6 +89,10 @@ typedef struct _prefix_t {
 
 /* } */
 
+/* typedef unsigned int u_int; */
+typedef void (*void_fn1_t)(void *);
+typedef void (*void_fn2_t)(struct _prefix_t *, void *);
+
 typedef struct _patricia_node_t {
    u_int bit;			/* flag if this node used */
    prefix_t *prefix;		/* who we are in patricia tree */
@@ -113,9 +116,9 @@ patricia_node_t * patricia_search_best2 (patricia_tree_t *patricia, prefix_t *pr
 patricia_node_t *patricia_lookup (patricia_tree_t *patricia, prefix_t *prefix);
 void patricia_remove (patricia_tree_t *patricia, patricia_node_t *node);
 patricia_tree_t *New_Patricia (int maxbits);
-void Clear_Patricia (patricia_tree_t *patricia, void_fn_t func);
-void Destroy_Patricia (patricia_tree_t *patricia, void_fn_t func);
-void patricia_process (patricia_tree_t *patricia, void_fn_t func);
+void Clear_Patricia (patricia_tree_t *patricia, void_fn1_t func);
+void Destroy_Patricia (patricia_tree_t *patricia, void_fn1_t func);
+void patricia_process (patricia_tree_t *patricia, void_fn2_t func);
 
 void Deref_Prefix (prefix_t * prefix);
 
