@@ -27,6 +27,9 @@ Create a pytricia object and load a couple prefixes into it:
     >>> pyt = pytricia.PyTricia()
     >>> pyt["10.0.0.0/8"] = 'a'
     >>> pyt["10.1.0.0/16"] = 'b'
+    >>> len(pyt)
+    2
+    >>> 
 
 The ``insert`` method can also be used to add prefixes/values to a PyTricia object.  This method returns ``None``.
 
@@ -83,6 +86,26 @@ The ``in`` operator can be used to test whether a prefix is contained in the ``P
     True
     >>> 
 
+The ``has_key`` method is also implement, but it's important to note that the behavior of ``in`` differs from ``has_key``.  The ``has_key`` method checks for an *exact match* of a network prefix.  The ``in`` operator checks whether the left-hand operand (i.e., an IP address) is contained within one of the prefixes in the ``PyTricia`` object.  The ``get`` method and the indexing operation (``[]``) (each described above) have lookup behavior similar like the ``in`` operator --- they do *not* search for an exact match, but rather for the most closely matching prefix.  For example:
+
+    >>> pyt.has_key('10.1.0.0/16')
+    True
+    >>> pyt.has_key('10.1.0.0')
+    False
+    >>> pyt.has_key('10.0.0.0/8')
+    True
+    >>> pyt.has_key('10.0.0.0')
+    False
+    >>> pyt.has_key('10.0.0.0/12')
+    False
+    >>> '10.0.0.0/12' in pyt
+    True
+    >>> '10.0.0.0' in pyt
+    True
+    >>> '10.0.0.0/8' in pyt
+    True
+    >>> 
+
 A ``PyTricia`` object is *almost* like a dictionary, but not quite.   You can extract the keys, but not the values:
 
     >>> pyt.keys()
@@ -92,6 +115,14 @@ A ``PyTricia`` object is *almost* like a dictionary, but not quite.   You can ex
       File "<stdin>", line 1, in <module>
     AttributeError: 'pytricia.PyTricia' object has no attribute 'values'
 
+As with a dictionary, you can iterate over a ``PyTricia`` object.  Currently, there's no ``items()``-like method for iterating over both keys and values; you can just iterate over keys (network prefixes).
+
+    >> for prefix in pyt:
+    ...     print (prefix,pyt[prefix])
+    ... 
+    10.0.0.0/8 a
+    10.1.0.0/16 b
+    >>> 
 
 # Performance
 
