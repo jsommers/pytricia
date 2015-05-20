@@ -32,8 +32,7 @@ code, and has three things to recommend it over related modules
 
  * there are a few nicer library features for manipulating the structure.
 
-Some performance numbers to back up claim 1 will be included in the
-distro in the future.  In the meanwhile, see for yourself.
+See the github repo for documentation and some performance numbers.
 
 Pytricia is released under terms of the GPLv2.
 '''
