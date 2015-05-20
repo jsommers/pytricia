@@ -1,6 +1,6 @@
 from distutils.core import setup, Extension
 setup(name="pytricia", 
-      version="0.2",
+      version="0.2.1",
       description="An efficient IP address storage and lookup module for Python.",
       author="Joel Sommers",
       author_email="jsommers@acm.org",
