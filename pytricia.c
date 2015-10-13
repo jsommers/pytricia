@@ -150,6 +150,7 @@ pytricia_length(PyTricia *self)
 }
 
 /* from SubnetTree.cc */
+/* -- TODO: make compatible with IPv6 */
 static prefix_t* 
 make_prefix(unsigned long addr, int width)
 {
@@ -166,6 +167,10 @@ make_prefix(unsigned long addr, int width)
     return subnet;
 }
 
+/* -- TODO: make compatible with IPv6 -- */
+/* 
+   -- problem: buffer only designed for IPv4 --
+*/
 static int 
 parse_cidr(const char *cidr, unsigned long *subnet, unsigned short *masklen)
 {
@@ -176,14 +181,16 @@ parse_cidr(const char *cidr, unsigned long *subnet, unsigned short *masklen)
         return -1;
     }
 
-    const char *s = strchr(cidr, '/');
+    const char *s = strchr(cidr, '/'); // find the address before the prefix
+
+    // if found
     if (s) {
         unsigned long len = s - cidr < 32 ? s - cidr : 31;
         memcpy(buffer, cidr, len);
         buffer[len] = '\0';
         *masklen = atoi(s+1);
         s = buffer;
-    } else {
+    } else { // not found; assume all significant (255.255.255.255)
         s = cidr;
         *masklen = 32;
     }

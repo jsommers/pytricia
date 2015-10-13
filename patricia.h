@@ -68,6 +68,7 @@
 
 /* { from mrt.h */
 
+// ipv4 prefix struct
 typedef struct _prefix4_t {
     u_short family;		/* AF_INET | AF_INET6 */
     u_short bitlen;		/* same as mask? */
@@ -75,6 +76,7 @@ typedef struct _prefix4_t {
     struct in_addr sin;
 } prefix4_t;
 
+// ipv4/v6 prefix struct
 typedef struct _prefix_t {
     u_short family;		/* AF_INET | AF_INET6 */
     u_short bitlen;		/* same as mask? */
@@ -104,7 +106,7 @@ typedef struct _patricia_node_t {
 
 typedef struct _patricia_tree_t {
    patricia_node_t 	*head;
-   u_int		maxbits;	/* for IP, 32 bit addresses */
+   u_int		maxbits;	/* for IPv4, 32 bit addresses */
    int num_active_node;		/* for debug purpose */
 } patricia_tree_t;
 
