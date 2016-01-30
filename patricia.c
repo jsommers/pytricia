@@ -52,16 +52,16 @@ static char copyright[] =
 "This product includes software developed by the University of Michigan, Merit"
 "Network, Inc., and their contributors.";
 
-#include <assert.h> /* assert */
-#include <ctype.h> /* isdigit */
-#include <errno.h> /* errno */
-#include <math.h> /* sin */
-#include <stddef.h> /* NULL */
-#include <stdio.h> /* sprintf, fprintf, stderr */
-#include <stdlib.h> /* free, atol, calloc */
-#include <string.h> /* memcpy, strchr, strlen */
-#include <arpa/inet.h> /* for inet_addr */
-#include <sys/types.h> /* for u_short, etc. */
+#include <assert.h> 
+#include <ctype.h> 
+#include <errno.h> 
+#include <math.h> 
+#include <stddef.h> 
+#include <stdio.h> 
+#include <stdlib.h> 
+#include <string.h> 
+#include <arpa/inet.h> 
+#include <sys/types.h> 
 
 #include "patricia.h"
 
@@ -108,7 +108,7 @@ local_inet_pton (int af, const char *src, void *dst)
 
 	if (af == AF_INET) {
 	result = inet_addr(src);
-	if (result == -1)
+	if (result == INADDR_NONE)
 		return 0;
 	else {
 			memcpy (dst, &result, 4);

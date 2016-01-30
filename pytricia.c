@@ -2,25 +2,6 @@
 #include <Python.h>
 #include "patricia.h"
 
-/*
- * - documentation
- * - any optimization
- * - check with python3 ...
- * - allow more flexible calling of methods; ints, ipaddrs, etc.
- * - error checking
- */
-
- /* Bria's notes
-  * - Reference counting when you malloc things? 
-  * - Which errors do I handle & how do I handle them best? Do I need to handle every malloc?
-  * - WRITE TESTS!
-  *
-  *
-  */
-
-// packed byte rep -> cast to an array of uint8_t and then pull out in turn & add to string.
-// socket.inet_aton -> deal with the result of that
-
 typedef struct {
     PyObject_HEAD
     patricia_tree_t *m_tree;
