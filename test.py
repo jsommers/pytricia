@@ -25,6 +25,13 @@ class PyTriciaTests(unittest.TestCase):
         with self.assertRaises(ValueError) as cm:
             t = pytricia.PyTricia(129)
         self.assertIsInstance(cm.exception, ValueError)
+
+        t = pytricia.PyTricia(64, socket.AF_INET6)
+        self.assertIsInstance(t, pytricia.PyTricia)
+
+        with self.assertRaises(ValueError) as cm:
+            t = pytricia.PyTricia(64, socket.AF_INET6+1)
+
       
     def testBasic(self):
         pyt = pytricia.PyTricia()

@@ -5,6 +5,7 @@
 typedef struct {
     PyObject_HEAD
     patricia_tree_t *m_tree;
+    int m_family;
 } PyTricia;
 
 typedef struct {
@@ -18,8 +19,7 @@ typedef struct {
     PyTricia *m_parent;
 } PyTriciaIter;
 
-static const int ADDRSTRLEN = 32;
-
+static const int ADDRSTRLEN = 50;
 
 prefix_t *prefix_convert(int family, const char *addr) {
     int prefixlen = 0;
@@ -107,7 +107,9 @@ static int convert_key_to_cstring(PyObject* key, char keystr[ADDRSTRLEN]) {
     } else if (PyLong_Check(key)) {
         long val = htonl(PyLong_AsLong(key));
         return (inet_ntop_with_prefix(AF_INET, &val, keystr, ADDRSTRLEN) == NULL);
-    } 
+    } else if (PyBytes_Check(key)) {
+
+    }
 #if PY_MINOR_VERSION >= 4
     // do we have an IPv4Address or IPv4Network object (ipaddress
     // module added in Python 3.4
@@ -154,19 +156,27 @@ static int
 pytricia_init(PyTricia *self, PyObject *args, PyObject *kwds)
 {
     int prefixlen = 32;
-    if (!PyArg_ParseTuple(args, "|i", &prefixlen)) {
+    int family = AF_INET;
+    if (!PyArg_ParseTuple(args, "|ii", &prefixlen, &family)) {
         self->m_tree = New_Patricia(1); // need to have *something* to dealloc
-        PyErr_SetString(PyExc_ValueError, "Error parsing prefix length.");
+        PyErr_SetString(PyExc_ValueError, "Error parsing prefix length or address family");
         return -1;
     }
 
     if (prefixlen < 0 || prefixlen > PATRICIA_MAXBITS) {
         self->m_tree = New_Patricia(1); // need to have *something* to dealloc
-        PyErr_SetString(PyExc_ValueError, "Invalid number of maximum bits; must be between 0 and 128, inclusive.");
+        PyErr_SetString(PyExc_ValueError, "Invalid number of maximum bits; must be between 0 and 128, inclusive");
         return -1;
     } 
+
+    if (!(family == AF_INET || family == AF_INET6)) {
+        self->m_tree = New_Patricia(1); // need to have *something* to dealloc
+        PyErr_SetString(PyExc_ValueError, "Invalid address family; must be AF_INET (2) or AF_INET6 (30)");
+        return -1;
+    }
     
     self->m_tree = New_Patricia(prefixlen);
+    self->m_family = family;
     if (self->m_tree == NULL) {
         return -1;
     }
