@@ -673,7 +673,8 @@ patricia_lookup (patricia_tree_t *patricia, prefix_t *prefix)
 	patricia_node_t *node, *new_node, *parent, *glue;
 	u_char *addr, *test_addr;
 	u_int bitlen, check_bit, differ_bit;
-	int i, j, r;
+        u_int i;
+	int j, r;
 
 	assert (patricia);
 	assert (prefix);

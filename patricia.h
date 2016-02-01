@@ -53,6 +53,8 @@
 
 #include <sys/types.h>
 
+#define HAVE_IPV6 1 // JS: force use of ip6
+
 
 /* { from defs.h */
 #define prefix_touchar(prefix) ((u_char *)&(prefix)->add.sin)
@@ -73,6 +75,13 @@ typedef struct _prefix4_t {
     int ref_count;		
     struct in_addr sin;
 } prefix4_t;
+
+typedef struct _prefix6_t {
+    u_short family;		
+    u_short bitlen;		
+    int ref_count;		
+    struct in6_addr sin6;
+} prefix6_t;
 
 typedef struct _prefix_t {
     u_short family;		
@@ -120,6 +129,7 @@ void Destroy_Patricia (patricia_tree_t *patricia, void_fn1_t func);
 void patricia_process (patricia_tree_t *patricia, void_fn2_t func);
 
 void Deref_Prefix (prefix_t * prefix);
+prefix_t * New_Prefix(int, void *, int);
 
 /* { from demo.c */
 

@@ -20,6 +20,61 @@ typedef struct {
 
 static const int ADDRSTRLEN = 32;
 
+
+prefix_t *prefix_convert(int family, const char *addr) {
+    int prefixlen = 0;
+    char addrcopy[128];
+    strncpy(addrcopy, addr, 128);
+    char *slash = strchr(addrcopy, '/');
+    if (slash != NULL) {
+        char *endptr = NULL;
+        *slash = '\0';
+        slash++;
+        if (strlen(slash) > 0) {
+            prefixlen = strtol(slash, &endptr, 10);
+            if (endptr == slash) {
+                return NULL;
+            }
+        }
+    }
+
+    // if family isn't set, infer it
+    if (family == 0) {
+        if (strchr(addrcopy, ':')) {
+            family = AF_INET6;
+        } else {
+            family = AF_INET;
+        }
+    }
+
+    if (family == AF_INET) {
+        if (strchr(addrcopy, ':')) { 
+            return NULL;
+        }
+        if (prefixlen == 0 || prefixlen < 0 || prefixlen > 32) {
+            prefixlen = 32;
+        }
+        struct in_addr sin;
+        if (inet_pton(AF_INET, addrcopy, &sin) != 1) {
+            return NULL;
+        }
+        return New_Prefix(AF_INET, &sin, prefixlen);
+    } else if (family == AF_INET6) {
+        if (prefixlen == 0 || prefixlen < 0 || prefixlen > 128) {
+            prefixlen = 128;
+        }
+
+        struct in6_addr sin6;
+        if (inet_pton(AF_INET6, addrcopy, &sin6) != 1) {
+            return NULL;
+        }
+        return New_Prefix(AF_INET6, &sin6, prefixlen);
+    } else {
+        return NULL;
+    }
+}
+
+
 static void *inet_ntop_with_prefix(int family, const void *src, char *dst, int bufflen) {
     if (inet_ntop(family, src, dst, bufflen) == NULL) {
         return NULL;
