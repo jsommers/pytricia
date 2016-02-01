@@ -91,8 +91,8 @@ key_object_to_prefix(PyObject *key) {
         }
         pfx_rv = prefix_convert(0, temp);
     } else if (PyLong_Check(key)) {
-        long val = htonl(PyLong_AsLong(key));
-        pfx_rv = New_Prefix(AF_INET, &val, 32);
+        unsigned long packed_addr = htonl(PyLong_AsUnsignedLong(key));
+        pfx_rv = New_Prefix(AF_INET, &packed_addr, 32);
     } else if (PyBytes_Check(key)) {
         char *addrbuf = NULL;
         Py_ssize_t len = 0;
@@ -109,11 +109,15 @@ key_object_to_prefix(PyObject *key) {
         }
     }
 #if PY_MINOR_VERSION >= 4
-    // do we have an IPv4Address or IPv4Network object (ipaddress
+    // do we have an IPv4/6Address or IPv4/6Network object (ipaddress
     // module added in Python 3.4
+    else if (0) {
 
-
+    } 
 #endif
+    else {
+        PyErr_SetString(PyExc_ValueError, "Invalid key type");
+    }
 #else // python2
     // if (PyString_Check(key)) {
     //     char* temp = PyString_AsString(key);

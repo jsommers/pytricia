@@ -3,6 +3,7 @@ from __future__ import print_function
 import unittest
 import pytricia
 import socket
+import struct
 
 def dumppyt(t):
     print ("\nDumping Pytricia")
@@ -67,10 +68,22 @@ class PyTriciaTests(unittest.TestCase):
 
     def testNonStringKey(self):
         pyt = pytricia.PyTricia()
+
+        # insert as string
         pyt['10.1.2.3/24'] = 'abc'
 
-        b = socket.inet_aton('10.1.2.3') # bytes object
+        # lookup as bytes
+        b = socket.inet_aton('10.1.2.3') 
         self.assertEqual(pyt[b], 'abc')
+
+        # lookup as int
+        i = b[0] * 2**24 + b[1] * 2**16 + b[2] * 2**8 
+        for j in range(256):
+            self.assertEqual(pyt[i+j], 'abc')
+
+        # lookup as str
+        self.assertEqual(pyt['10.1.2.99'], 'abc')
+
 
         # xdict = {'does it':'work?'}
         # pyt[ipint] = xdict
