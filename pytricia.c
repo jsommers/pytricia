@@ -319,19 +319,6 @@ pystr_to_prefix(char* str) // Changed to take in a string instead of a pystr.
 static PyObject* 
 pytricia_subscript(PyTricia *self, PyObject *key)
 {
-    // char keystr[ADDRSTRLEN];
-    // int rv = convert_key_to_cstring(key, keystr); 
-    // if (rv < 0) {
-    //     PyErr_SetString(PyExc_ValueError, "Error parsing key.");
-    //     return NULL;
-    // }
-
-    // prefix_t* subnet = pystr_to_prefix(keystr);
-    // if (subnet == NULL) {
-    //     PyErr_SetString(PyExc_ValueError, "Error parsing prefix.");
-    //     return NULL;
-    // }
-
     prefix_t *subnet = key_object_to_prefix(key);
     if (subnet == NULL) {
         return NULL;
