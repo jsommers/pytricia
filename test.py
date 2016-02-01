@@ -67,15 +67,15 @@ class PyTriciaTests(unittest.TestCase):
 
     def testNonStringKey(self):
         pyt = pytricia.PyTricia()
+        pyt['10.1.2.3/24'] = 'abc'
 
-        # ipint = socket.inet_aton('10.1.2.3')
+        b = socket.inet_aton('10.1.2.3') # bytes object
+        self.assertEqual(pyt[b], 'abc')
+
         # xdict = {'does it':'work?'}
         # pyt[ipint] = xdict
-
         # self.assertTrue('10.1.2.3' in pyt)
         # self.assertEqual(pyt['10.1.2.3'], xdict)
-
-        # pyt[True] = 'y' # should cause type error but instead counts as just 1?
 
         # pyt["10.1.2.4/50"] = "banana" # Defaults to assuming 32 for anything not in between 0-32, inclusive.
         # self.assertTrue('10.1.2.4' in pyt)

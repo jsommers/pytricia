@@ -74,6 +74,59 @@ prefix_t *prefix_convert(int family, const char *addr) {
     }
 }
 
+prefix_t *
+key_object_to_prefix(PyObject *key) {
+    prefix_t *pfx_rv = NULL;
+#if PY_MAJOR_VERSION >= 3
+    if (PyUnicode_Check(key)) {
+        int rv = PyUnicode_READY(key); 
+        if (rv < 0) { 
+            PyErr_SetString(PyExc_ValueError, "Error parsing string prefix");
+            return NULL;
+        }
+        char* temp = PyUnicode_AsUTF8(key);
+        if (temp == NULL) {
+            PyErr_SetString(PyExc_ValueError, "Error parsing string prefix");
+            return NULL;
+        }
+        pfx_rv = prefix_convert(0, temp);
+    } else if (PyLong_Check(key)) {
+        long val = htonl(PyLong_AsLong(key));
+        pfx_rv = New_Prefix(AF_INET, &val, 32);
+    } else if (PyBytes_Check(key)) {
+        char *addrbuf = NULL;
+        Py_ssize_t len = 0;
+        if (PyBytes_AsStringAndSize(key, &addrbuf, &len) < 0) {
+            return NULL;
+        }
+        if (len == 4) {
+            pfx_rv = New_Prefix(AF_INET, addrbuf, 32);
+        } else if (len == 16) {
+            pfx_rv = New_Prefix(AF_INET6, addrbuf, 128);
+        } else {
+            PyErr_SetString(PyExc_ValueError, "Address bytes must be of length 4 or 16");
+            return NULL;
+        }
+    }
+#if PY_MINOR_VERSION >= 4
+    // do we have an IPv4Address or IPv4Network object (ipaddress
+    // module added in Python 3.4
+
+
+#endif
+#else // python2
+    // if (PyString_Check(key)) {
+    //     char* temp = PyString_AsString(key);
+    //     strncpy(keystr, temp, ADDRSTRLEN);
+    //     return 0;
+    // } else if (PyInt_Check(key)) {
+    //     long val = htonl(PyInt_AsLong(key));
+    //     return (inet_ntop_with_prefix(AF_INET, &val, keystr, ADDRSTRLEN) == NULL);
+    // }
+#endif
+    return pfx_rv;
+}
+
 
 static void *inet_ntop_with_prefix(int family, const void *src, char *dst, int bufflen) {
     if (inet_ntop(family, src, dst, bufflen) == NULL) {
@@ -107,9 +160,7 @@ static int convert_key_to_cstring(PyObject* key, char keystr[ADDRSTRLEN]) {
     } else if (PyLong_Check(key)) {
         long val = htonl(PyLong_AsLong(key));
         return (inet_ntop_with_prefix(AF_INET, &val, keystr, ADDRSTRLEN) == NULL);
-    } else if (PyBytes_Check(key)) {
-
-    }
+    } 
 #if PY_MINOR_VERSION >= 4
     // do we have an IPv4Address or IPv4Network object (ipaddress
     // module added in Python 3.4
@@ -268,19 +319,23 @@ pystr_to_prefix(char* str) // Changed to take in a string instead of a pystr.
 static PyObject* 
 pytricia_subscript(PyTricia *self, PyObject *key)
 {
-    char keystr[ADDRSTRLEN];
-    int rv = convert_key_to_cstring(key, keystr); 
-    if (rv < 0) {
-        PyErr_SetString(PyExc_ValueError, "Error parsing key.");
-        return NULL;
-    }
+    // char keystr[ADDRSTRLEN];
+    // int rv = convert_key_to_cstring(key, keystr); 
+    // if (rv < 0) {
+    //     PyErr_SetString(PyExc_ValueError, "Error parsing key.");
+    //     return NULL;
+    // }
 
-    prefix_t* subnet = pystr_to_prefix(keystr);
+    // prefix_t* subnet = pystr_to_prefix(keystr);
+    // if (subnet == NULL) {
+    //     PyErr_SetString(PyExc_ValueError, "Error parsing prefix.");
+    //     return NULL;
+    // }
+
+    prefix_t *subnet = key_object_to_prefix(key);
     if (subnet == NULL) {
-        PyErr_SetString(PyExc_ValueError, "Error parsing prefix.");
         return NULL;
     }
-    
     patricia_node_t* node = patricia_search_best(self->m_tree, subnet);
     Deref_Prefix(subnet);
 
