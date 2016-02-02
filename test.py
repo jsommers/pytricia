@@ -84,6 +84,10 @@ class PyTriciaTests(unittest.TestCase):
         # lookup as str
         self.assertEqual(pyt['10.1.2.99'], 'abc')
 
+        # FIXME: only test this if >= 3.4
+        import ipaddress
+        ipaddr = ipaddress.IPv4Address("10.1.2.47");
+        self.assertEqual(pyt[ipaddr], 'abc')
 
         # xdict = {'does it':'work?'}
         # pyt[ipint] = xdict

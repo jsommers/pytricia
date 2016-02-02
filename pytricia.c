@@ -21,6 +21,13 @@ typedef struct {
 
 static const int ADDRSTRLEN = 50;
 
+#if PY_MAJOR_VERSION == 3 && PY_MINOR_VERSION >= 4
+static PyObject *ipaddr_module = NULL;
+static PyObject *ipaddr_base = NULL;
+static PyObject *ipnet_base = NULL;
+#endif
+
+
 prefix_t *prefix_convert(int family, const char *addr) {
     int prefixlen = 0;
     char addrcopy[128];
@@ -77,7 +84,7 @@ prefix_t *prefix_convert(int family, const char *addr) {
 prefix_t *
 key_object_to_prefix(PyObject *key) {
     prefix_t *pfx_rv = NULL;
-#if PY_MAJOR_VERSION >= 3
+#if PY_MAJOR_VERSION == 3
     if (PyUnicode_Check(key)) {
         int rv = PyUnicode_READY(key); 
         if (rv < 0) { 
@@ -111,7 +118,19 @@ key_object_to_prefix(PyObject *key) {
 #if PY_MINOR_VERSION >= 4
     // do we have an IPv4/6Address or IPv4/6Network object (ipaddress
     // module added in Python 3.4
-    else if (0) {
+    else if (ipnet_base && PyObject_IsInstance(key, ipnet_base)) {
+            printf("got an ipnet obj\n");
+            PyErr_SetString(PyExc_ValueError, "Not implemented yet");
+            return NULL;
+            // .network_address.packed
+            // .prefixlen
+
+    }
+    else if (ipaddr_base && PyObject_IsInstance(key, ipaddr_base)) {
+            printf("got an ipaddr obj\n");
+            PyErr_SetString(PyExc_ValueError, "Not implemented yet");
+            return NULL;
+            // .packed
 
     } 
 #endif
@@ -782,7 +801,7 @@ initpytricia(void)
     PyObject* m;
 
     if (PyType_Ready(&PyTriciaType) < 0)
-#if PY_MAJOR_VERSION >= 3
+#if PY_MAJOR_VERSION == 3
         return NULL;
 #else
         return;
@@ -790,19 +809,19 @@ initpytricia(void)
 
     PyTriciaIterType.tp_new = PyType_GenericNew;
     if (PyType_Ready(&PyTriciaIterType) < 0)
-#if PY_MAJOR_VERSION >= 3
+#if PY_MAJOR_VERSION == 3
         return NULL;
 #else
         return;
 #endif
 
-#if PY_MAJOR_VERSION >= 3
+#if PY_MAJOR_VERSION == 3
     m = PyModule_Create(&pytricia_moduledef);
 #else
     m = Py_InitModule3("pytricia", NULL, pytricia_doc);
 #endif
     if (m == NULL)
-#if PY_MAJOR_VERSION >= 3 
+#if PY_MAJOR_VERSION == 3 
       return NULL;
 #else
       return;
@@ -815,7 +834,22 @@ initpytricia(void)
     // JS: don't add the PyTriciaIter object to the public interface.  users shouldn't be
     // able to create iterator objects w/o calling __iter__ on a pytricia object.
 
-#if PY_MAJOR_VERSION >= 3
+#if PY_MAJOR_VERSION == 3
+#if PY_MINOR_VERSION >= 4
+    // 3.4 introduced ipaddress module.  get some static
+    // references to the module and a base class for type
+    // checking arguments to various methods.
+    ipaddr_module = PyImport_ImportModule("ipaddress");
+    if (ipaddr_module != NULL) {
+        ipaddr_base = PyObject_GetAttrString(ipaddr_module, "_IPAddressBase");
+        ipnet_base = PyObject_GetAttrString(ipaddr_module, "_IPNetworkBase");
+        if (ipaddr_base == NULL && ipnet_base == NULL) {
+            Py_DECREF(ipaddr_module);
+            ipaddr_module = NULL;
+        }
+    }
+#endif
+
     return m;
 #endif
 }
