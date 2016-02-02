@@ -4,6 +4,7 @@ import unittest
 import pytricia
 import socket
 import struct
+import sys
 
 def dumppyt(t):
     print ("\nDumping Pytricia")
@@ -84,10 +85,15 @@ class PyTriciaTests(unittest.TestCase):
         # lookup as str
         self.assertEqual(pyt['10.1.2.99'], 'abc')
 
-        # FIXME: only test this if >= 3.4
-        import ipaddress
-        ipaddr = ipaddress.IPv4Address("10.1.2.47");
-        self.assertEqual(pyt[ipaddr], 'abc')
+        # lookup as ipaddress objects
+        if sys.version_info.major == 3 and sys.version_info.minor >= 4:
+            import ipaddress
+            ipaddr = ipaddress.IPv4Address("10.1.2.47")
+            self.assertEqual(pyt[ipaddr], 'abc')
+
+            ipnet = ipaddress.IPv4Network("10.1.2.0/24")
+            self.assertEqual(pyt[ipnet], 'abc')
+
 
         # xdict = {'does it':'work?'}
         # pyt[ipint] = xdict

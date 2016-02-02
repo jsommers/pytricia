@@ -25,10 +25,33 @@ static const int ADDRSTRLEN = 50;
 static PyObject *ipaddr_module = NULL;
 static PyObject *ipaddr_base = NULL;
 static PyObject *ipnet_base = NULL;
+static int _ipaddr_isset = 0;
 #endif
 
+static void _set_ipaddr_refs() {
+#if PY_MAJOR_VERSION == 3 && PY_MINOR_VERSION >= 4
+    ipaddr_module = ipaddr_base = ipnet_base = NULL;
+    if (_ipaddr_isset) {
+        return;
+    }
+    _ipaddr_isset = 1;
+    // 3.4 introduced ipaddress module.  get some static
+    // references to the module and a base class for type
+    // checking arguments to various methods.
+    ipaddr_module = PyImport_ImportModule("ipaddress");
+    if (ipaddr_module != NULL) {
+        ipaddr_base = PyObject_GetAttrString(ipaddr_module, "_BaseAddress");
+        ipnet_base = PyObject_GetAttrString(ipaddr_module, "_BaseNetwork");
+        if (ipaddr_base == NULL && ipnet_base == NULL) {
+            Py_DECREF(ipaddr_module);
+            ipaddr_module = NULL;
+        }
+    }
+#endif
+}
 
-prefix_t *prefix_convert(int family, const char *addr) {
+static prefix_t * 
+_prefix_convert(int family, const char *addr) {
     int prefixlen = 0;
     char addrcopy[128];
     strncpy(addrcopy, addr, 128);
@@ -81,10 +104,33 @@ prefix_t *prefix_convert(int family, const char *addr) {
     }
 }
 
-prefix_t *
-key_object_to_prefix(PyObject *key) {
+static prefix_t * 
+_bytes_to_prefix(PyObject *key) {
+    prefix_t *pfx_rv = NULL;
+    char *addrbuf = NULL;
+    Py_ssize_t len = 0;
+    if (PyBytes_AsStringAndSize(key, &addrbuf, &len) < 0) {
+        PyErr_SetString(PyExc_ValueError, "Error decoding key");
+        return NULL;
+    }
+    if (len == 4) {
+        pfx_rv = New_Prefix(AF_INET, addrbuf, 32);
+    } else if (len == 16) {
+        pfx_rv = New_Prefix(AF_INET6, addrbuf, 128);
+    } else {
+        PyErr_SetString(PyExc_ValueError, "Address bytes must be of length 4 or 16");
+    }
+    return pfx_rv;
+}
+
+static prefix_t *
+_key_object_to_prefix(PyObject *key) {
     prefix_t *pfx_rv = NULL;
 #if PY_MAJOR_VERSION == 3
+    if (!_ipaddr_isset) {
+        _set_ipaddr_refs();
+    }
+
     if (PyUnicode_Check(key)) {
         int rv = PyUnicode_READY(key); 
         if (rv < 0) { 
@@ -96,42 +142,41 @@ key_object_to_prefix(PyObject *key) {
             PyErr_SetString(PyExc_ValueError, "Error parsing string prefix");
             return NULL;
         }
-        pfx_rv = prefix_convert(0, temp);
+        pfx_rv = _prefix_convert(0, temp);
     } else if (PyLong_Check(key)) {
         unsigned long packed_addr = htonl(PyLong_AsUnsignedLong(key));
         pfx_rv = New_Prefix(AF_INET, &packed_addr, 32);
     } else if (PyBytes_Check(key)) {
-        char *addrbuf = NULL;
-        Py_ssize_t len = 0;
-        if (PyBytes_AsStringAndSize(key, &addrbuf, &len) < 0) {
-            return NULL;
-        }
-        if (len == 4) {
-            pfx_rv = New_Prefix(AF_INET, addrbuf, 32);
-        } else if (len == 16) {
-            pfx_rv = New_Prefix(AF_INET6, addrbuf, 128);
-        } else {
-            PyErr_SetString(PyExc_ValueError, "Address bytes must be of length 4 or 16");
-            return NULL;
-        }
+        pfx_rv = _bytes_to_prefix(key);
     }
 #if PY_MINOR_VERSION >= 4
     // do we have an IPv4/6Address or IPv4/6Network object (ipaddress
     // module added in Python 3.4
     else if (ipnet_base && PyObject_IsInstance(key, ipnet_base)) {
-            printf("got an ipnet obj\n");
-            PyErr_SetString(PyExc_ValueError, "Not implemented yet");
-            return NULL;
-            // .network_address.packed
-            // .prefixlen
-
-    }
-    else if (ipaddr_base && PyObject_IsInstance(key, ipaddr_base)) {
-            printf("got an ipaddr obj\n");
-            PyErr_SetString(PyExc_ValueError, "Not implemented yet");
-            return NULL;
-            // .packed
-
+        PyObject *netaddr = PyObject_GetAttrString(key, "network_address");
+        if (netaddr) {
+            PyObject *packed = PyObject_GetAttrString(netaddr, "packed");
+            if (packed && PyBytes_Check(packed)) {
+                pfx_rv = _bytes_to_prefix(packed);
+                PyObject *prefixlen = PyObject_GetAttrString(key, "prefixlen");
+                if (prefixlen && PyLong_Check(prefixlen)) {
+                    long bitlen = htonl(PyLong_AsLong(prefixlen));
+                    pfx_rv->bitlen = bitlen;
+                }
+            } else {
+                PyErr_SetString(PyExc_ValueError, "Error getting raw representation of IPNetwork");
+            }
+        } else {
+            PyErr_SetString(PyExc_ValueError, "Couldn't get network address from IPNetwork");
+        }
+    } else if (ipaddr_base && PyObject_IsInstance(key, ipaddr_base)) {
+        PyObject *packed = PyObject_GetAttrString(key, "packed");
+        if (packed && PyBytes_Check(packed)) {
+            pfx_rv = _bytes_to_prefix(packed);
+        } else {
+            PyErr_SetString(PyExc_ValueError, "Error getting raw representation of IPAddress");
+        }
+        Py_XDECREF(packed);
     } 
 #endif
     else {
@@ -342,7 +387,7 @@ pystr_to_prefix(char* str) // Changed to take in a string instead of a pystr.
 static PyObject* 
 pytricia_subscript(PyTricia *self, PyObject *key)
 {
-    prefix_t *subnet = key_object_to_prefix(key);
+    prefix_t *subnet = _key_object_to_prefix(key);
     if (subnet == NULL) {
         return NULL;
     }
@@ -835,21 +880,6 @@ initpytricia(void)
     // able to create iterator objects w/o calling __iter__ on a pytricia object.
 
 #if PY_MAJOR_VERSION == 3
-#if PY_MINOR_VERSION >= 4
-    // 3.4 introduced ipaddress module.  get some static
-    // references to the module and a base class for type
-    // checking arguments to various methods.
-    ipaddr_module = PyImport_ImportModule("ipaddress");
-    if (ipaddr_module != NULL) {
-        ipaddr_base = PyObject_GetAttrString(ipaddr_module, "_IPAddressBase");
-        ipnet_base = PyObject_GetAttrString(ipaddr_module, "_IPNetworkBase");
-        if (ipaddr_base == NULL && ipnet_base == NULL) {
-            Py_DECREF(ipaddr_module);
-            ipaddr_module = NULL;
-        }
-    }
-#endif
-
     return m;
 #endif
 }
