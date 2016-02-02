@@ -94,6 +94,14 @@ class PyTriciaTests(unittest.TestCase):
             ipnet = ipaddress.IPv4Network("10.1.2.0/24")
             self.assertEqual(pyt[ipnet], 'abc')
 
+            with self.assertRaises(KeyError) as cm:
+                ipaddr = ipaddress.IPv6Address("fe01::1")
+                self.assertIsNone(pyt[ipaddr])
+
+            with self.assertRaises(KeyError) as cm:
+                ipnet = ipaddress.IPv6Network("fe01::1/64", strict=False)
+                self.assertIsNone(pyt[ipnet])
+
 
         # xdict = {'does it':'work?'}
         # pyt[ipint] = xdict
