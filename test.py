@@ -73,14 +73,29 @@ class PyTriciaTests(unittest.TestCase):
         # insert as string
         pyt['10.1.2.3/24'] = 'abc'
 
-        # lookup as bytes
+        # lookup as string
+        for i in range(256):
+            self.assertEqual(pyt['10.1.2.{}'.format(i)], 'abc')
+
+        # lookup as bytes (or, ugh, another str in python2)
         b = socket.inet_aton('10.1.2.3') 
         self.assertEqual(pyt[b], 'abc')
 
-        # lookup as int
-        i = b[0] * 2**24 + b[1] * 2**16 + b[2] * 2**8 
-        for j in range(256):
-            self.assertEqual(pyt[i+j], 'abc')
+        # bytes in py3k.  python2 stinks.
+        if sys.version_info.major == 3 and sys.version_info.minor >= 4:
+            i = b[0] * 2**24 + b[1] * 2**16 + b[2] * 2**8 
+            for j in range(256):
+                self.assertEqual(pyt[i+j], 'abc')
+
+        if sys.version_info.major == 2:
+            # longs only exist in python2.  it stinks.
+            b = struct.unpack('4b',socket.inet_aton('10.1.2.3'))
+            i = b[0] * 2**24 + b[1] * 2**16 + b[2] * 2**8 
+            self.assertEqual(pyt[long(i)], 'abc')
+
+            # i, = struct.unpack('i', b)
+            for j in range(256):
+                self.assertEqual(pyt[i+j], 'abc')
 
         # lookup as str
         self.assertEqual(pyt['10.1.2.99'], 'abc')
@@ -101,6 +116,12 @@ class PyTriciaTests(unittest.TestCase):
             with self.assertRaises(KeyError) as cm:
                 ipnet = ipaddress.IPv6Network("fe01::1/64", strict=False)
                 self.assertIsNone(pyt[ipnet])
+
+        with self.assertRaises(KeyError) as cm:
+            self.assertIsNone(pyt["fe01::1/64"])
+
+        with self.assertRaises(KeyError) as cm:
+            self.assertIsNone(pyt["fe01::1"])
 
 
         # xdict = {'does it':'work?'}

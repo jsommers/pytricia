@@ -48,9 +48,9 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.  
  */
 
-static char copyright[] =
-"This product includes software developed by the University of Michigan, Merit"
-"Network, Inc., and their contributors.";
+#define COPYRIGHT \
+"This product includes software developed by the University of Michigan, Merit "\
+"Network, Inc., and their contributors."
 
 #include <assert.h> 
 #include <ctype.h> 
@@ -358,12 +358,12 @@ ascii2prefix (int family, char *string)
 // Get rid of this with next IPv6 upgrade
 #if defined(NT) && !defined(HAVE_INET_NTOP)
 			inet6_addr(string, &sin6);
-			return (New_Prefix (AF_INET6, &sin6, bitlen));
+			return (New_Prefix (AF_INET6, &sin6, (int)bitlen));
 #else
 			if ((result = local_inet_pton (AF_INET6, string, &sin6)) <= 0)
 				return (NULL);
 #endif /* NT */
-			return (New_Prefix (AF_INET6, &sin6, bitlen));
+			return (New_Prefix (AF_INET6, &sin6, (int)bitlen));
 		}
 #endif /* HAVE_IPV6 */
 		else

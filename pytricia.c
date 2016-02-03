@@ -28,8 +28,8 @@ static PyObject *ipnet_base = NULL;
 static int _ipaddr_isset = 0;
 #endif
 
-static void _set_ipaddr_refs() {
 #if PY_MAJOR_VERSION == 3 && PY_MINOR_VERSION >= 4
+static void _set_ipaddr_refs() {
     ipaddr_module = ipaddr_base = ipnet_base = NULL;
     if (_ipaddr_isset) {
         return;
@@ -47,8 +47,8 @@ static void _set_ipaddr_refs() {
             ipaddr_module = NULL;
         }
     }
-#endif
 }
+#endif
 
 static prefix_t * 
 _prefix_convert(int family, const char *addr) {
@@ -61,7 +61,7 @@ _prefix_convert(int family, const char *addr) {
         *slash = '\0';
         slash++;
         if (strlen(slash) > 0) {
-            prefixlen = strtol(slash, &endptr, 10);
+            prefixlen = (int)strtol(slash, &endptr, 10);
             if (endptr == slash) {
                 return NULL;
             }
@@ -104,15 +104,9 @@ _prefix_convert(int family, const char *addr) {
     }
 }
 
-static prefix_t * 
-_bytes_to_prefix(PyObject *key) {
+static prefix_t *
+_packed_addr_to_prefix(char *addrbuf, long len) {
     prefix_t *pfx_rv = NULL;
-    char *addrbuf = NULL;
-    Py_ssize_t len = 0;
-    if (PyBytes_AsStringAndSize(key, &addrbuf, &len) < 0) {
-        PyErr_SetString(PyExc_ValueError, "Error decoding key");
-        return NULL;
-    }
     if (len == 4) {
         pfx_rv = New_Prefix(AF_INET, addrbuf, 32);
     } else if (len == 16) {
@@ -123,13 +117,28 @@ _bytes_to_prefix(PyObject *key) {
     return pfx_rv;
 }
 
+#if PY_MAJOR_VERSION == 3
+static prefix_t * 
+_bytes_to_prefix(PyObject *key) {
+    char *addrbuf = NULL;
+    Py_ssize_t len = 0;
+    if (PyBytes_AsStringAndSize(key, &addrbuf, &len) < 0) {
+        PyErr_SetString(PyExc_ValueError, "Error decoding bytes");
+        return NULL;
+    }
+    return _packed_addr_to_prefix(addrbuf, len);
+}
+#endif
+
 static prefix_t *
 _key_object_to_prefix(PyObject *key) {
     prefix_t *pfx_rv = NULL;
 #if PY_MAJOR_VERSION == 3
+#if PY_MINOR_VERSION >= 4
     if (!_ipaddr_isset) {
         _set_ipaddr_refs();
     }
+#endif
 
     if (PyUnicode_Check(key)) {
         int rv = PyUnicode_READY(key); 
@@ -183,14 +192,25 @@ _key_object_to_prefix(PyObject *key) {
         PyErr_SetString(PyExc_ValueError, "Invalid key type");
     }
 #else // python2
-    // if (PyString_Check(key)) {
-    //     char* temp = PyString_AsString(key);
-    //     strncpy(keystr, temp, ADDRSTRLEN);
-    //     return 0;
-    // } else if (PyInt_Check(key)) {
-    //     long val = htonl(PyInt_AsLong(key));
-    //     return (inet_ntop_with_prefix(AF_INET, &val, keystr, ADDRSTRLEN) == NULL);
-    // }
+    if (PyString_Check(key)) {
+        char* temp = PyString_AsString(key);
+        Py_ssize_t slen = PyString_Size(key);
+        if (strchr(temp, '.') || strchr(temp, ':')) {
+            pfx_rv = _prefix_convert(0, temp);
+        } else if (slen == 4 || slen == 16) {
+            pfx_rv = _packed_addr_to_prefix(temp, slen);
+        } else {
+            PyErr_SetString(PyExc_ValueError, "Invalid string/bytes format");
+        }
+    // } else if (PyInt_Check(key)) { // same code as py3k
+    //     unsigned long packed_addr = htonl(PyLong_AsUnsignedLong(key));
+    //     pfx_rv = New_Prefix(AF_INET, &packed_addr, 32);
+    } else if (PyLong_Check(key) || PyInt_Check(key)) {
+        unsigned long packed_addr = htonl(PyInt_AsUnsignedLongMask(key));
+        pfx_rv = New_Prefix(AF_INET, &packed_addr, 32);
+    } else {
+        PyErr_SetString(PyExc_ValueError, "Invalid key type");
+    }
 #endif
     return pfx_rv;
 }
