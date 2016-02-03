@@ -1,12 +1,15 @@
 from __future__ import print_function
 import pytricia
-from ipaddress import IPv4Network, IPv6Network
+import sys
 
 pyt = pytricia.PyTricia(64)
-ip4 = IPv4Network('10.0.1.2/16', strict=False)
-ip6 = IPv6Network('fe80:beef::/64')
-ip4_bytes = ip4.network_address.packed
-ip6_bytes = ip6.network_address.packed
+
+if sys.version_info.major == 3:
+    from ipaddress import IPv4Network, IPv6Network
+    ip4 = IPv4Network('10.0.1.2/16', strict=False)
+    ip6 = IPv6Network('fe80:beef::/64')
+    ip4_bytes = ip4.network_address.packed
+    ip6_bytes = ip6.network_address.packed
 
 def do_insert():
     pyt.insert('10.0.1.2/16', 'abc')    
@@ -36,7 +39,10 @@ def main():
     from timeit import Timer
     iterations = 10000000
 
-    expts = ['do_insert', 'do_indexassign', 'do_insertstr', 'do_insertstr_separate_prefix', 'do_insertbytes', 'do_insertipaddr']
+    expts = ['do_insert', 'do_indexassign', 'do_insertstr', 'do_insertstr_separate_prefix']
+    if sys.version_info.major == 3:
+        expts.append('do_insertbytes')
+        expts.append('do_insertipaddr')
 
     for fn in expts:
         t = Timer("{}()".format(fn), "from __main__ import {}".format(fn))
