@@ -54,6 +54,11 @@ static prefix_t *
 _prefix_convert(int family, const char *addr) {
     int prefixlen = 0;
     char addrcopy[128];
+
+    if (strlen(addr) < 4) {
+        return NULL;
+    } 
+
     strncpy(addrcopy, addr, 128);
     char *slash = strchr(addrcopy, '/');
     if (slash != NULL) {
@@ -151,7 +156,12 @@ _key_object_to_prefix(PyObject *key) {
             PyErr_SetString(PyExc_ValueError, "Error parsing string prefix");
             return NULL;
         }
-        pfx_rv = _prefix_convert(0, temp);
+        if (strchr(temp, '.') || strchr(temp, ':')) {
+            pfx_rv = _prefix_convert(0, temp);
+        } else {
+            PyErr_SetString(PyExc_ValueError, "Invalid key type");
+            return NULL;
+        }
     } else if (PyLong_Check(key)) {
         unsigned long packed_addr = htonl(PyLong_AsUnsignedLong(key));
         pfx_rv = New_Prefix(AF_INET, &packed_addr, 32);
@@ -200,11 +210,8 @@ _key_object_to_prefix(PyObject *key) {
         } else if (slen == 4 || slen == 16) {
             pfx_rv = _packed_addr_to_prefix(temp, slen);
         } else {
-            PyErr_SetString(PyExc_ValueError, "Invalid string/bytes format");
+            PyErr_SetString(PyExc_ValueError, "Invalid key type");
         }
-    // } else if (PyInt_Check(key)) { // same code as py3k
-    //     unsigned long packed_addr = htonl(PyLong_AsUnsignedLong(key));
-    //     pfx_rv = New_Prefix(AF_INET, &packed_addr, 32);
     } else if (PyLong_Check(key) || PyInt_Check(key)) {
         unsigned long packed_addr = htonl(PyInt_AsUnsignedLongMask(key));
         pfx_rv = New_Prefix(AF_INET, &packed_addr, 32);

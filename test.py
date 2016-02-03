@@ -118,33 +118,19 @@ class PyTriciaTests(unittest.TestCase):
                 self.assertIsNone(pyt[ipnet])
 
         with self.assertRaises(KeyError) as cm:
-            self.assertIsNone(pyt["fe01::1/64"])
+            pyt["fe01::1/64"]
 
         with self.assertRaises(KeyError) as cm:
-            self.assertIsNone(pyt["fe01::1"])
+            pyt["fe01::1"]
 
+        with self.assertRaises(ValueError) as cm:
+            pyt[""]
 
-        # xdict = {'does it':'work?'}
-        # pyt[ipint] = xdict
-        # self.assertTrue('10.1.2.3' in pyt)
-        # self.assertEqual(pyt['10.1.2.3'], xdict)
+        with self.assertRaises(ValueError) as cm:
+            pyt["apple"]
 
-        # pyt["10.1.2.4/50"] = "banana" # Defaults to assuming 32 for anything not in between 0-32, inclusive.
-        # self.assertTrue('10.1.2.4' in pyt)
-
-        # # No --- the following absolutely should work.  prefix
-        # # length can be 1 -> 32
-        # pyt["10.1.2.5/17"] = "peanut" # If not 8/16/32 -> doesn't work correctly?
-        # self.assertTrue(pyt.has_key('10.1.2.5/17'))
-
-        # pyt[""] = "blank" #doesn't work if you pass in nothing.
-
-        # pyt["astring"] = "astring" # doesn't work if you pass in a string that doesn't convert to int.
-
-        # pyt[878465784678368736873648763785638745] = "toolong" # doesn't work if an int is too long.
-
-        # pyt[long(167838211)] = 'x' # doesn't work if you pass in an explicit long for Python 2.
-
+        with self.assertRaises(KeyError) as cm:
+            pyt[2**65] 
 
     def testMoreComplex(self):
         pyt = pytricia.PyTricia()
