@@ -60,14 +60,10 @@ _prefix_convert(int family, const char *addr) {
     strncpy(addrcopy, addr, 128);
     char *slash = strchr(addrcopy, '/');
     if (slash != NULL) {
-        char *endptr = NULL;
         *slash = '\0';
         slash++;
         if (strlen(slash) > 0) {
-            prefixlen = (int)strtol(slash, &endptr, 10);
-            if (endptr == slash) {
-                return NULL;
-            }
+            prefixlen = (int)strtol(slash, NULL, 10);
         }
     }
 
@@ -81,9 +77,6 @@ _prefix_convert(int family, const char *addr) {
     }
 
     if (family == AF_INET) {
-        if (strchr(addrcopy, ':')) { 
-            return NULL;
-        }
         if (prefixlen == -1 || prefixlen < 0 || prefixlen > 32) {
             prefixlen = 32;
         }
@@ -177,7 +170,7 @@ _key_object_to_prefix(PyObject *key) {
                 pfx_rv = _bytes_to_prefix(packed);
                 PyObject *prefixlen = PyObject_GetAttrString(key, "prefixlen");
                 if (prefixlen && PyLong_Check(prefixlen)) {
-                    long bitlen = htonl(PyLong_AsLong(prefixlen));
+                    long bitlen = PyLong_AsLong(prefixlen);
                     pfx_rv->bitlen = bitlen;
                     Py_DECREF(prefixlen);
                 }

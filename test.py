@@ -267,12 +267,14 @@ class PyTriciaTests(unittest.TestCase):
         if sys.version_info.major == 3 and sys.version_info.minor >= 4:
             from ipaddress import IPv6Address, IPv6Network
 
-            pyt = pytricia.PyTricia(64)
+            pyt = pytricia.PyTricia(128)
+            
+            pyt.insert(IPv6Network('2001:218:200e::/56'), "def")
             pyt.insert(IPv6Network("fe80:abcd::0/96"), "xyz")
             pyt.insert(IPv6Address("fe80:beef::"), 96, "abc")
 
             addrlist = sorted([ x for x in pyt.keys() ])
-            self.assertEqual(addrlist, ['fe80:abcd::/96', 'fe80:beef::/96'])
+            self.assertEqual(addrlist, ['2001:218:200e::/56', 'fe80:abcd::/96', 'fe80:beef::/96'])
 
             self.assertEqual(pyt.get("fe80:abcd::0/96"), "xyz")
             self.assertEqual(pyt.get("fe80:beef::0/96"), "abc")
