@@ -178,6 +178,19 @@ class PyTriciaTests(unittest.TestCase):
             t.delete('10.0.0.0/9')
         self.assertIsInstance(cm.exception, KeyError)
 
+    def testIp6(self):
+        pyt = pytricia.PyTricia(128)
+        addrstr = "fe80::0/32" 
+        pyt[addrstr] = "hello, ip6"
+        self.assertEqual(pyt["fe80::1"], "hello, ip6")
+
+        if sys.version_info.major == 3 and sys.version_info.minor >= 4:
+            from ipaddress import IPv6Address, IPv6Network
+            addr = IPv6Address("fe80::1")
+            xnet = IPv6Network("fe80::1/32", strict=False)
+            self.assertEqual(pyt[addr], 'hello, ip6')
+            self.assertEqual(pyt[xnet], 'hello, ip6')
+
     def testIteration(self):
         pyt = pytricia.PyTricia()
         pyt["10.1.0.0/16"] = 'b'
@@ -185,7 +198,6 @@ class PyTriciaTests(unittest.TestCase):
         pyt["10.0.1.0/24"] = 'c'
         pyt["0.0.0.0/0"] = 'default route'
         self.assertListEqual(sorted(['0.0.0.0/0', '10.0.0.0/8','10.1.0.0/16','10.0.1.0/24']), sorted(list(pyt.__iter__())))
-        # self.assertListEqual(sorted(['0.0.0.0/0', '10.0.0.0/8','10.1.0.0/16','10.0.1.0/24']), sorted(list(iter(pyt))))
 
     def testIteration2(self):
         pyt = pytricia.PyTricia()
@@ -214,8 +226,35 @@ class PyTriciaTests(unittest.TestCase):
         self.assertEqual(pyt["10.0.0.0/8"], "a")
         self.assertIn("10.0.0.1", pyt)
 
+    def testInsert2(self):
+        pyt = pytricia.PyTricia()
+        val = pyt.insert("10.0.0.0", 8, "a")
+        self.assertIs(val, None)
+        self.assertEqual(len(pyt), 1)
+        self.assertEqual(pyt["10.0.0.0/8"], "a")
+        self.assertIn("10.0.0.1", pyt)
+
+    def testInsert3(self):
+        pyt = pytricia.PyTricia(128)
+        val = pyt.insert("fe80::aebc:32ff:fec2:b659/64", "a")
+        self.assertIs(val, None)
+        self.assertEqual(len(pyt), 1)
+        self.assertEqual(pyt["fe80::aebc:32ff:fec2:b659/64"], "a")
+        self.assertIn("fe80::aebc:32ff:fec2:b659", pyt)
+
+    def testInsert4(self):
+        pyt = pytricia.PyTricia(64)
+        with self.assertRaises(ValueError) as cm:
+            val = pyt.insert("fe80::1") # should raise an exception
+
     def testGet(self):
         pyt = pytricia.PyTricia()
+        pyt.insert("10.0.0.0/8", "a")
+        self.assertEqual(pyt.get("10.0.0.0/8", "X"), "a")
+        self.assertEqual(pyt.get("11.0.0.0/8", "X"), "X")
+
+    def testGet2(self):
+        pyt = pytricia.PyTricia(64)
         pyt.insert("10.0.0.0/8", "a")
         self.assertEqual(pyt.get("10.0.0.0/8", "X"), "a")
         self.assertEqual(pyt.get("11.0.0.0/8", "X"), "X")

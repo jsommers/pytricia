@@ -19,8 +19,6 @@ typedef struct {
     PyTricia *m_parent;
 } PyTriciaIter;
 
-static const int ADDRSTRLEN = 50;
-
 #if PY_MAJOR_VERSION == 3 && PY_MINOR_VERSION >= 4
 static PyObject *ipaddr_module = NULL;
 static PyObject *ipaddr_base = NULL;
@@ -52,7 +50,7 @@ static void _set_ipaddr_refs() {
 
 static prefix_t * 
 _prefix_convert(int family, const char *addr) {
-    int prefixlen = 0;
+    int prefixlen = -1;
     char addrcopy[128];
 
     if (strlen(addr) < 4) {
@@ -86,7 +84,7 @@ _prefix_convert(int family, const char *addr) {
         if (strchr(addrcopy, ':')) { 
             return NULL;
         }
-        if (prefixlen == 0 || prefixlen < 0 || prefixlen > 32) {
+        if (prefixlen == -1 || prefixlen < 0 || prefixlen > 32) {
             prefixlen = 32;
         }
         struct in_addr sin;
@@ -95,7 +93,7 @@ _prefix_convert(int family, const char *addr) {
         }
         return New_Prefix(AF_INET, &sin, prefixlen);
     } else if (family == AF_INET6) {
-        if (prefixlen == 0 || prefixlen < 0 || prefixlen > 128) {
+        if (prefixlen == -1 || prefixlen < 0 || prefixlen > 128) {
             prefixlen = 128;
         }
 
@@ -222,64 +220,8 @@ _key_object_to_prefix(PyObject *key) {
     return pfx_rv;
 }
 
-
-static void *inet_ntop_with_prefix(int family, const void *src, char *dst, int bufflen) {
-    if (inet_ntop(family, src, dst, bufflen) == NULL) {
-        return NULL;
-    }
-    strncat(dst, "/32", bufflen);
-    return dst;
-}
-
-
-/*
- * Convert a Pytricia key to a string representation that can be converted,
- * eventually, to a to prefix_t for use in the Pytricia structure.
- * return 0 on success, -1 on failure.
- */
-static int convert_key_to_cstring(PyObject* key, char keystr[ADDRSTRLEN]) {
-    memset(keystr, 0, ADDRSTRLEN); 
-
-#if PY_MAJOR_VERSION >= 3
-    if (PyUnicode_Check(key)) {
-        int rv = PyUnicode_READY(key); 
-        if (rv < 0) { 
-            return -1;
-        }
-        char* temp = PyUnicode_AsUTF8(key);
-        if (temp == NULL) {
-            return -1;
-        }
-        strncpy(keystr, temp, ADDRSTRLEN);
-        return 0;
-    } else if (PyLong_Check(key)) {
-        long val = htonl(PyLong_AsLong(key));
-        return (inet_ntop_with_prefix(AF_INET, &val, keystr, ADDRSTRLEN) == NULL);
-    } 
-#if PY_MINOR_VERSION >= 4
-    // do we have an IPv4Address or IPv4Network object (ipaddress
-    // module added in Python 3.4
-
-
-#endif
-
-#else // Python v2
-    if (PyString_Check(key)) {
-        char* temp = PyString_AsString(key);
-        strncpy(keystr, temp, ADDRSTRLEN);
-        return 0;
-    } else if (PyInt_Check(key)) {
-        long val = htonl(PyInt_AsLong(key));
-        return (inet_ntop_with_prefix(AF_INET, &val, keystr, ADDRSTRLEN) == NULL);
-    }
-#endif
-    return -1;
-}
-
-
 static void
-pytricia_dealloc(PyTricia* self)
-{
+pytricia_dealloc(PyTricia* self) {
     if (self) {
         Destroy_Patricia(self->m_tree, 0);
         Py_TYPE(self)->tp_free((PyObject*)self);
@@ -287,8 +229,7 @@ pytricia_dealloc(PyTricia* self)
 }
 
 static PyObject *
-pytricia_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
-{
+pytricia_new(PyTypeObject *type, PyObject *args, PyObject *kwds) {
     PyTricia *self;
 
     self = (PyTricia*)type->tp_alloc(type, 0);
@@ -299,8 +240,7 @@ pytricia_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 }
 
 static int
-pytricia_init(PyTricia *self, PyObject *args, PyObject *kwds)
-{
+pytricia_init(PyTricia *self, PyObject *args, PyObject *kwds) {
     int prefixlen = 32;
     int family = AF_INET;
     if (!PyArg_ParseTuple(args, "|ii", &prefixlen, &family)) {
@@ -341,79 +281,8 @@ pytricia_length(PyTricia *self)
     return count;
 }
 
-/* from SubnetTree.cc */
-/* -- TODO: make compatible with IPv6 */
-static prefix_t* 
-make_prefix(unsigned long addr, int width)
-{
-    prefix_t* subnet = (prefix_t*)malloc(sizeof(prefix_t));
-    if (subnet == NULL) {
-        return NULL;
-    }
-
-    memcpy(&subnet->add.sin, &addr, sizeof(subnet->add.sin)) ;
-    subnet->family = AF_INET;
-    subnet->bitlen = width;
-    subnet->ref_count = 1;
-
-    return subnet;
-}
-
-/* -- TODO: make compatible with IPv6 -- */
-/* 
-   -- problem: buffer only designed for IPv4 --
-*/
-static int 
-parse_cidr(const char *cidr, unsigned long *subnet, unsigned short *masklen)
-{
-    static char buffer[32];
-    struct in_addr addr;
-
-    if (!cidr) {
-        return -1;
-    }
-
-    const char *s = strchr(cidr, '/'); // find the address before the prefix
-
-    // if found
-    if (s) {
-        unsigned long len = s - cidr < 32 ? s - cidr : 31;
-        memcpy(buffer, cidr, len);
-        buffer[len] = '\0';
-        *masklen = atoi(s+1);
-        s = buffer;
-    } else { // not found; assume all significant (255.255.255.255)
-        s = cidr;
-        *masklen = 32;
-    }
-
-    if (!inet_aton((char *)(s), &addr)) {
-        return -1;
-    }
-
-    *subnet = addr.s_addr;
-    return 0;
-}
-
-static prefix_t*
-pystr_to_prefix(char* str) // Changed to take in a string instead of a pystr.
-{
-    if (!str) { // If str isn't populated for some reason -> come back to this.
-        return NULL;
-    }
-
-    unsigned long subnet = 0UL;
-    unsigned short mask = 0;
-    if (parse_cidr(str, &subnet, &mask)) {
-        return NULL;
-    }
-    
-    return make_prefix(subnet, mask);
-}
-
 static PyObject* 
-pytricia_subscript(PyTricia *self, PyObject *key)
-{
+pytricia_subscript(PyTricia *self, PyObject *key) {
     prefix_t *subnet = _key_object_to_prefix(key);
     if (subnet == NULL) {
         return NULL;
@@ -433,22 +302,11 @@ pytricia_subscript(PyTricia *self, PyObject *key)
 }
 
 static int
-pytricia_internal_delete(PyTricia *self, PyObject *key)
-{
-    char keystr[ADDRSTRLEN];
-    int rv = convert_key_to_cstring(key, keystr); 
-    if (rv < 0) {
-        PyErr_SetString(PyExc_ValueError, "Error parsing key.");
-        return -1;
-    }
-
-
-    prefix_t* prefix = pystr_to_prefix(keystr);
+pytricia_internal_delete(PyTricia *self, PyObject *key) {
+    prefix_t *prefix = _key_object_to_prefix(key);
     if (prefix == NULL) {
-        PyErr_SetString(PyExc_ValueError, "Error parsing prefix.");
         return -1;
     }
-
     patricia_node_t* node = patricia_search_exact(self->m_tree, prefix);
     Deref_Prefix(prefix);
 
@@ -466,20 +324,19 @@ pytricia_internal_delete(PyTricia *self, PyObject *key)
 }
 
 static int 
-pytricia_assign_subscript(PyTricia *self, PyObject *key, PyObject *value)
-{
+_pytricia_assign_subscript_internal(PyTricia *self, PyObject *key, PyObject *value, long prefixlen) {
     if (!value) {
         return pytricia_internal_delete(self, key);
     }
     
-    char keystr[ADDRSTRLEN];
-    int rv = convert_key_to_cstring(key, keystr); 
-    if (rv < 0) {
-        PyErr_SetString(PyExc_ValueError, "Error parsing key.");
-        return -1;
+    prefix_t *prefix = _key_object_to_prefix(key);
+    // if prefixlen > -1, it should override (possibly) parsed prefix len in key
+    if (prefixlen != -1) {
+        prefix->bitlen = prefixlen;
     }
+    patricia_node_t *node = patricia_lookup(self->m_tree, prefix);
+    Deref_Prefix (prefix);
     
-    patricia_node_t* node = make_and_lookup(self->m_tree, keystr);
     if (!node) {
         PyErr_SetString(PyExc_ValueError, "Error inserting into patricia tree");
         return -1;
@@ -491,17 +348,44 @@ pytricia_assign_subscript(PyTricia *self, PyObject *key, PyObject *value)
     return 0;
 }
 
+static int 
+pytricia_assign_subscript(PyTricia *self, PyObject *key, PyObject *value) {
+    return _pytricia_assign_subscript_internal(self, key, value, -1);
+}
+
 static PyObject*
 pytricia_insert(PyTricia *self, PyObject *args) {
     PyObject *key = NULL;
-    PyObject *value = NULL;
+    PyObject *value1 = NULL;
+    PyObject *value2 = NULL;
+    PyObject *rhs = NULL;
 
-    if (!PyArg_ParseTuple(args, "OO", &key, &value)) { 
+    if (!PyArg_ParseTuple(args, "O|OO", &key, &value1, &value2)) { 
         return NULL;
     }
 
-    int rv = pytricia_assign_subscript(self, key, value);
-    if (rv == -1) {
+    if (value1) {
+        long prefixlen = -1;
+        if (value2 == NULL) {
+            rhs = value1;
+        } else {
+            rhs = value2;
+#if PY_MAJOR_VERSION == 3
+            if (PyLong_Check(value1)) {
+                prefixlen = PyLong_AsLong(value1);
+            }
+#else // python2
+            if (PyLong_Check(value1) || PyInt_Check(value1)) {
+                prefixlen  = PyInt_AsLong(value1);
+            }
+#endif
+        }
+        int rv = _pytricia_assign_subscript_internal(self, key, rhs, prefixlen); 
+        if (rv == -1) {
+            return NULL;
+        }
+    } else {
+        PyErr_SetString(PyExc_ValueError, "Missing argument(s) to insert");
         return NULL;
     }
 
@@ -509,8 +393,7 @@ pytricia_insert(PyTricia *self, PyObject *args) {
 }
 
 static PyObject*
-pytricia_delitem(PyTricia *self, PyObject *args)
-{
+pytricia_delitem(PyTricia *self, PyObject *args) {
     PyObject *key = NULL;
     if (!PyArg_ParseTuple(args, "O", &key)) {
         PyErr_SetString(PyExc_ValueError, "Unclear what happened!");
@@ -525,28 +408,15 @@ pytricia_delitem(PyTricia *self, PyObject *args)
 }
 
 static PyObject *
-pytricia_get(register PyTricia *obj, PyObject *args)
-{
+pytricia_get(register PyTricia *obj, PyObject *args) {
     PyObject *key = NULL;
     PyObject *defvalue = NULL;
 
     if (!PyArg_ParseTuple(args, "O|O:get", &key, &defvalue)) {
         return NULL;
     }
-
-    char keystr[ADDRSTRLEN];
-    int rv = convert_key_to_cstring(key, keystr); 
-    if (rv < 0) {
-        PyErr_SetString(PyExc_ValueError, "Error parsing key.");
-        return NULL;
-    }
-
-    prefix_t* prefix = pystr_to_prefix(keystr);
-    if (prefix == NULL) {
-        PyErr_SetString(PyExc_ValueError, "Error parsing prefix.");
-        return NULL;
-    }
     
+    prefix_t *prefix = _key_object_to_prefix(key);
     patricia_node_t* node = patricia_search_best(obj->m_tree, prefix);
     Deref_Prefix(prefix);
 
@@ -564,21 +434,8 @@ pytricia_get(register PyTricia *obj, PyObject *args)
 }
 
 static int
-pytricia_contains(PyTricia *self, PyObject *key)
-{
-    char keystr[ADDRSTRLEN];
-    int rv = convert_key_to_cstring(key, keystr); 
-    if (rv < 0) {
-        PyErr_SetString(PyExc_ValueError, "Error parsing key.");
-        return -1;
-    }
-
-    prefix_t* prefix = pystr_to_prefix(keystr);
-    if (!prefix) {
-        PyErr_SetString(PyExc_ValueError, "Error parsing prefix.");
-        return -1;
-    }
-    
+pytricia_contains(PyTricia *self, PyObject *key) {
+    prefix_t *prefix = _key_object_to_prefix(key);
     patricia_node_t* node = patricia_search_best(self->m_tree, prefix);
     Deref_Prefix(prefix);
     if (node) {
@@ -588,25 +445,12 @@ pytricia_contains(PyTricia *self, PyObject *key)
 }
 
 static PyObject*
-pytricia_has_key(PyTricia *self, PyObject *args)
-{
+pytricia_has_key(PyTricia *self, PyObject *args) {
     PyObject *key = NULL;
     if (!PyArg_ParseTuple(args, "O", &key))
         return NULL;
-        
-    char keystr[ADDRSTRLEN];
-    int rv = convert_key_to_cstring(key, keystr); 
-    if (rv < 0) {
-        PyErr_SetString(PyExc_ValueError, "Error parsing key.");
-        return NULL;
-    }
-
-    prefix_t* prefix = pystr_to_prefix(keystr);
-    if (!prefix) {
-        PyErr_SetString(PyExc_ValueError, "Error parsing prefix.");
-        return NULL;
-    }
     
+    prefix_t *prefix = _key_object_to_prefix(key);
     patricia_node_t* node = patricia_search_exact(self->m_tree, prefix);
     Deref_Prefix(prefix);
     if (node) {
@@ -616,8 +460,7 @@ pytricia_has_key(PyTricia *self, PyObject *args)
 }
 
 static PyObject* 
-pytricia_keys(register PyTricia *self, PyObject *unused)
-{
+pytricia_keys(register PyTricia *self, PyObject *unused) {
     register PyObject *rvlist = PyList_New(0);
     if (!rvlist) {
         return NULL;
