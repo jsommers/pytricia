@@ -5,6 +5,9 @@ import radix
 import SubnetTree
 import random
 
+if sys.version_info.major == 3:
+    xrange = range
+
 def build_tree_subnet(s):
     n = 0
     for i in xrange(256):

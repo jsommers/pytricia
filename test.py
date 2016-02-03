@@ -255,9 +255,29 @@ class PyTriciaTests(unittest.TestCase):
 
     def testGet2(self):
         pyt = pytricia.PyTricia(64)
-        pyt.insert("10.0.0.0/8", "a")
-        self.assertEqual(pyt.get("10.0.0.0/8", "X"), "a")
-        self.assertEqual(pyt.get("11.0.0.0/8", "X"), "X")
+        pyt.insert("fe80:abcd::0/96", "xyz")
+        pyt.insert("fe80:beef::0", 96, "abc")
+        self.assertEqual(pyt.get("fe80:abcd::0/96"), "xyz")
+        self.assertEqual(pyt.get("fe80:beef::0/96"), "abc")
+
+        addrlist = sorted([ x for x in pyt.keys() ])
+        self.assertEqual(addrlist, ['fe80:abcd::/96', 'fe80:beef::/96'])
+
+    def testGet3(self):
+        if sys.version_info.major == 3 and sys.version_info.minor >= 4:
+            from ipaddress import IPv6Address, IPv6Network
+
+            pyt = pytricia.PyTricia(64)
+            pyt.insert(IPv6Network("fe80:abcd::0/96"), "xyz")
+            pyt.insert(IPv6Address("fe80:beef::"), 96, "abc")
+
+            addrlist = sorted([ x for x in pyt.keys() ])
+            self.assertEqual(addrlist, ['fe80:abcd::/96', 'fe80:beef::/96'])
+
+            self.assertEqual(pyt.get("fe80:abcd::0/96"), "xyz")
+            self.assertEqual(pyt.get("fe80:beef::0/96"), "abc")
+            self.assertEqual(pyt.get(IPv6Network("fe80:abcd::0/96")), "xyz")
+            self.assertEqual(pyt.get(IPv6Network("fe80:beef::0/96")), "abc")
 
 if __name__ == '__main__':
     unittest.main()

@@ -17,7 +17,7 @@ Building pytricia is done in the standard pythonic way:
     python setup.py build
     python setup.py install
 
-This code is beta quality at present but has been tested on OS X 10.10 and Ubuntu 14.04 (both 64 bit) and Python 2.7.6 and Python 3.4.1.
+This code is beta quality at present but has been tested on OS X 10.11 and Ubuntu 14.04 (both 64 bit) and Python 2.7.6 and Python 3.5.1.
 
 # Examples
 
@@ -31,9 +31,24 @@ Create a pytricia object and load a couple prefixes into it:
     2
     >>> 
 
+The ``PyTricia`` class takes an optional parameter, which is the maximum number of bits to consider when constructing the trie.  By default, the number of bits is 32.  For IPv6, you can set this value higher (up to 128):
+
+    >>> import pytricia
+    >>> pyt = pytricia.PyTricia(128)
+    >>> pyt["fe80::/64"] = 'a'
+    >>> pyt["dead::/32"] = 'b'
+    >>> len(pyt)
+    2
+    >>> 
+
 The ``insert`` method can also be used to add prefixes/values to a PyTricia object.  This method returns ``None``.
 
     >>> pyt.insert("10.2.0.0/16", "c")
+
+The ``insert`` method can optionally accept three parameters.
+
+
+
 
 Use standard dictionary-like access to do longest prefix match lookup:
 

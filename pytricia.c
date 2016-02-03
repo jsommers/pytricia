@@ -179,10 +179,13 @@ _key_object_to_prefix(PyObject *key) {
                 if (prefixlen && PyLong_Check(prefixlen)) {
                     long bitlen = htonl(PyLong_AsLong(prefixlen));
                     pfx_rv->bitlen = bitlen;
+                    Py_DECREF(prefixlen);
                 }
+                Py_DECREF(packed);
             } else {
                 PyErr_SetString(PyExc_ValueError, "Error getting raw representation of IPNetwork");
             }
+            Py_DECREF(netaddr);
         } else {
             PyErr_SetString(PyExc_ValueError, "Couldn't get network address from IPNetwork");
         }
@@ -190,10 +193,10 @@ _key_object_to_prefix(PyObject *key) {
         PyObject *packed = PyObject_GetAttrString(key, "packed");
         if (packed && PyBytes_Check(packed)) {
             pfx_rv = _bytes_to_prefix(packed);
+            Py_DECREF(packed);
         } else {
             PyErr_SetString(PyExc_ValueError, "Error getting raw representation of IPAddress");
         }
-        Py_XDECREF(packed);
     } 
 #endif
     else {
