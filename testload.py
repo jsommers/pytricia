@@ -22,18 +22,24 @@ class PyTriciaLoadTest(unittest.TestCase):
                 for line in inf:
                     ipnet,prefix,asn = line.split()
                     network = '{}/{}'.format(ipnet.decode(), prefix.decode())
-                    pyt[network] = asn.decode()
+                    if network in pyt:
+                        pyt[network].append(asn.decode())
+                    else:
+                        pyt[network] = [asn.decode()]
 
         # verify that everything was stuffed into pyt correctly
         for f in PyTriciaLoadTest._files:
             print ("verifying routeviews data from {}".format(f))
             with gzip.GzipFile(f, 'r') as inf:
-                ipnet,prefix,asn = line.split()
-                asn = asn.decode()
-                network = '{}/{}'.format(ipnet.decode(), prefix.decode())
-                self.assertTrue(network in pyt)
-                self.assertTrue(ipnet.decode() in pyt)
-                self.assertEqual(pyt[network], asn)
+                for line in inf:
+                    ipnet,prefix,asn = line.split()
+                    asn = asn.decode()
+                    network = '{}/{}'.format(ipnet.decode(), prefix.decode())
+                    self.assertIn(network, pyt)
+                    ipnet = str(ipnet.decode()) 
+                    self.assertIn(ipnet, pyt)
+                    asnlist = pyt[network]
+                    self.assertIn(asn, asnlist)
 
         # dump everything out...
         # dumppyt(pyt)
