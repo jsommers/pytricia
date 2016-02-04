@@ -154,7 +154,7 @@ As with a dictionary, you can iterate over a ``PyTricia`` object.  Currently, th
 
 # Performance
 
-For API usage, using indexing is the fastest method for insertion and lookup.  See the ``apiperf.py`` script in the repo for some comparative numbers.  For Python3, using ``ipaddress``-module objects is the slowest.  There's a price to pay for the convenience, unfortunately.
+For API usage, the usual Python advice applies: using indexing is the fastest method for insertion, lookup, and removal.  See the ``apiperf.py`` script in the repo for some comparative numbers.  For Python 3, using ``ipaddress``-module objects is the slowest.  There's a price to pay for the convenience, unfortunately.
 
 The numbers below are based on running the program ``perftest.py`` (in the repo) against snapshots of py-radix and pysubnettree from February 2, 2016.  All tests were run in Python 2.7.6 and 3.4.3 on a Linux 3.13 kernel system (Ubuntu 14.04 server) which has 12 cores (Intel Xeon E5645 2.4GHz) and was very lightly loaded at the time of the test.
 
