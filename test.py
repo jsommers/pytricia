@@ -151,6 +151,20 @@ class PyTriciaTests(unittest.TestCase):
             if i != 10:
                 self.assertEqual(pyt['{}.2.3.4'.format(i)], 'default route')
         
+    def testDelete(self):
+        pyt = pytricia.PyTricia(64)
+        pyt.insert("fe80:abcd::0/96", "xyz")
+        pyt.insert("fe80:beef::0", 96, "abc")
+        self.assertEqual(pyt.get("fe80:abcd::0/96"), "xyz")
+        self.assertEqual(pyt.get("fe80:beef::0/96"), "abc")
+        pyt.delete("fe80:abcd::/96")
+        pyt.delete("fe80:beef::/96")
+        with self.assertRaises(KeyError) as cm:
+            pyt.delete("fe80:abcd::/96")
+        with self.assertRaises(KeyError) as cm:
+            pyt.delete("fe80:beef::/96")
+        self.assertEqual(len(pyt),0)
+
     def testInsertRemove(self):
         pyt = pytricia.PyTricia()
 
