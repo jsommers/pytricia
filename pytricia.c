@@ -27,7 +27,7 @@ static int _ipaddr_isset = 0;
 #endif
 
 #if PY_MAJOR_VERSION == 3 && PY_MINOR_VERSION >= 4
-static void _set_ipaddr_refs() {
+static void _set_ipaddr_refs(void) {
     ipaddr_module = ipaddr_base = ipnet_base = NULL;
     if (_ipaddr_isset) {
         return;
@@ -326,6 +326,10 @@ _pytricia_assign_subscript_internal(PyTricia *self, PyObject *key, PyObject *val
     }
     
     prefix_t *prefix = _key_object_to_prefix(key);
+    if (!prefix) {
+        return -1;
+    }
+
     // if prefixlen > -1, it should override (possibly) parsed prefix len in key
     if (prefixlen != -1) {
         prefix->bitlen = prefixlen;
@@ -413,6 +417,9 @@ pytricia_get(register PyTricia *obj, PyObject *args) {
     }
     
     prefix_t *prefix = _key_object_to_prefix(key);
+    if (!prefix) {
+        return NULL;
+    }
     patricia_node_t* node = patricia_search_best(obj->m_tree, prefix);
     Deref_Prefix(prefix);
 
@@ -432,6 +439,9 @@ pytricia_get(register PyTricia *obj, PyObject *args) {
 static int
 pytricia_contains(PyTricia *self, PyObject *key) {
     prefix_t *prefix = _key_object_to_prefix(key);
+    if (!prefix) {
+        return 0;        
+    }
     patricia_node_t* node = patricia_search_best(self->m_tree, prefix);
     Deref_Prefix(prefix);
     if (node) {
@@ -447,6 +457,9 @@ pytricia_has_key(PyTricia *self, PyObject *args) {
         return NULL;
     
     prefix_t *prefix = _key_object_to_prefix(key);
+    if (!prefix) {
+        return NULL;
+    }
     patricia_node_t* node = patricia_search_exact(self->m_tree, prefix);
     Deref_Prefix(prefix);
     if (node) {
