@@ -436,6 +436,35 @@ pytricia_get(register PyTricia *obj, PyObject *args) {
     return data;
 }
 
+static PyObject *
+pytricia_get_key(register PyTricia *obj, PyObject *args) {
+    PyObject *key = NULL;
+
+    if (!PyArg_ParseTuple(args, "O", &key)) {
+        return NULL;
+    }
+
+    prefix_t *prefix = _key_object_to_prefix(key);
+    if (!prefix) {
+        return NULL;
+    }
+    patricia_node_t* node = patricia_search_best(obj->m_tree, prefix);
+    Deref_Prefix(prefix);
+
+    if (!node) {
+        Py_RETURN_NONE;
+    }
+
+    char buffer[64];
+    prefix_toa2x(node->prefix, buffer, 1);
+    PyObject *item = Py_BuildValue("s", buffer);
+    if (!item) {
+	return NULL;
+    }
+    Py_INCREF(item);
+    return item;
+}
+
 static int
 pytricia_contains(PyTricia *self, PyObject *key) {
     prefix_t *prefix = _key_object_to_prefix(key);
@@ -573,6 +602,7 @@ static PyMethodDef pytricia_methods[] = {
     {"has_key",   (PyCFunction)pytricia_has_key, METH_VARARGS, "has_key(prefix) -> boolean\nReturn true iff prefix is in tree.  Note that this method checks for an *exact* match with the prefix.\nUse the 'in' operator if you want to test whether a given address is contained within some prefix."},
     {"keys",   (PyCFunction)pytricia_keys, METH_NOARGS, "keys() -> list\nReturn a list of all prefixes in the tree."},
     {"get", (PyCFunction)pytricia_get, METH_VARARGS, "get(prefix, [default]) -> object\nReturn value associated with prefix."},
+    {"get_key", (PyCFunction)pytricia_get_key, METH_VARARGS, "get_key(prefix) -> prefix\nReturn key associated with prefix (longest matching prefix)."},
     {"delete", (PyCFunction)pytricia_delitem, METH_VARARGS, "delete(prefix) -> \nDelete mapping associated with prefix.\n"},
     {"insert", (PyCFunction)pytricia_insert, METH_VARARGS, "insert(prefix, data) -> data\nCreate mapping between prefix and data in tree."},
     {"children", (PyCFunction)pytricia_children, METH_VARARGS, "children(prefix) -> list\nReturn a list of all prefixes that are more specific than the given prefix (the prefix must be present as an exact match)."},

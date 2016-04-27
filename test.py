@@ -295,6 +295,24 @@ class PyTriciaTests(unittest.TestCase):
             self.assertEqual(pyt.get(IPv6Network("fe80:abcd::0/96")), "xyz")
             self.assertEqual(pyt.get(IPv6Network("fe80:beef::0/96")), "abc")
 
+    def testGetKey(self):
+        pyt = pytricia.PyTricia()
+        pyt.insert("10.0.0.0/8", "a")
+        self.assertEqual(pyt.get_key("10.0.0.0/8"), "10.0.0.0/8")
+        self.assertEqual(pyt.get_key("10.42.42.42"), "10.0.0.0/8")
+        self.assertIsNone(pyt.get_key("11.0.0.0/8"))
+        pyt.insert("10.42.0.0/16", "b")
+        self.assertEqual(pyt.get_key("10.42.42.42"), "10.42.0.0/16")
+
+    def testGetKeyIP6(self):
+        pyt = pytricia.PyTricia(128)
+        pyt.insert("2001:db8:10::/48", "a")
+        self.assertEqual(pyt.get_key("2001:db8:10::/48"), "2001:db8:10::/48")
+        self.assertEqual(pyt.get_key("2001:db8:10:42::1"), "2001:db8:10::/48")
+        self.assertIsNone(pyt.get_key("2001:db8:11::/48"))
+        pyt.insert("2001:db8:10:42::/64", "b")
+        self.assertEqual(pyt.get_key("2001:db8:10:42::1"), "2001:db8:10:42::/64")
+
     def testChildren(self):
         pyt = pytricia.PyTricia()
         pyt.insert("42.0.0.0/8", "0")
