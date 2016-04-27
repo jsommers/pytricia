@@ -295,6 +295,36 @@ class PyTriciaTests(unittest.TestCase):
             self.assertEqual(pyt.get(IPv6Network("fe80:abcd::0/96")), "xyz")
             self.assertEqual(pyt.get(IPv6Network("fe80:beef::0/96")), "abc")
 
+    def testChildren(self):
+        pyt = pytricia.PyTricia()
+        pyt.insert("42.0.0.0/8", "0")
+        pyt.insert("42.100.0.0/16", "1")
+        pyt.insert("10.0.0.0/8", "a")
+        pyt.insert("10.100.0.0/16", "b")
+        pyt.insert("10.100.100.0/24", "c")
+        pyt.insert("10.101.0.0/16", "d")
+        self.assertListEqual(sorted(["10.100.0.0/16", "10.100.100.0/24", "10.101.0.0/16"]), sorted(pyt.children("10.0.0.0/8")))
+        self.assertListEqual(["10.100.100.0/24"], pyt.children("10.100.0.0/16"))
+        self.assertListEqual([], pyt.children("10.100.100.0/24"))
+        with self.assertRaises(KeyError) as cm:
+            pyt.children("10.42.42.0/24")
+        self.assertIsInstance(cm.exception, KeyError)
+
+    def testChildrenIp6(self):
+        pyt = pytricia.PyTricia(128)
+        pyt.insert("2001:db8:42::/48", "0")
+        pyt.insert("2001:db8:42:100::/64", "1")
+        pyt.insert("2001:db8:10::/48", "a")
+        pyt.insert("2001:db8:10:100::/64", "b")
+        pyt.insert("2001:db8:10:100:100::/96", "c")
+        pyt.insert("2001:db8:10:101::/64", "d")
+        self.assertListEqual(sorted(["2001:db8:10:100::/64", "2001:db8:10:100:100::/96", "2001:db8:10:101::/64"]), sorted(pyt.children("2001:db8:10::/48")))
+        self.assertListEqual(["2001:db8:10:100:100::/96"], pyt.children("2001:db8:10:100::/64"))
+        self.assertListEqual([], pyt.children("2001:db8:10:100:100::/96"))
+        with self.assertRaises(KeyError) as cm:
+            pyt.children("2001:db8:10:42:42::/96")
+        self.assertIsInstance(cm.exception, KeyError)
+
 if __name__ == '__main__':
     unittest.main()
 

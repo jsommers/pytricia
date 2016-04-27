@@ -496,6 +496,55 @@ pytricia_keys(register PyTricia *self, PyObject *unused) {
     return rvlist;
 }
 
+static PyObject*
+pytricia_children(register PyTricia *self, PyObject *args) {
+    PyObject *key = NULL;
+
+    if (!PyArg_ParseTuple(args, "O", &key)) {
+        return NULL;
+    }
+
+    prefix_t *prefix = _key_object_to_prefix(key);
+    if (!prefix) {
+        return NULL;
+    }
+
+    register PyObject *rvlist = PyList_New(0);
+    if (!rvlist) {
+        return NULL;
+    }
+
+    patricia_node_t* base_node = patricia_search_exact(self->m_tree, prefix);
+    Deref_Prefix(prefix);
+    if (!base_node) {
+	PyErr_SetString(PyExc_KeyError, "Prefix doesn't exist.");
+	Py_DECREF(rvlist);
+	return NULL;
+    }
+    patricia_node_t* node = NULL;
+    int err = 0;
+
+    PATRICIA_WALK (base_node, node) {
+	/* Discard first prefix (we want strict children) */
+	if (node != base_node) {
+	    char buffer[64];
+	    prefix_toa2x(node->prefix, buffer, 1);
+	    PyObject *item = Py_BuildValue("s", buffer);
+	    if (!item) {
+		Py_DECREF(rvlist);
+		return NULL;
+	    }
+	    err = PyList_Append(rvlist, item);
+	    Py_INCREF(item);
+	    if (err != 0) {
+		Py_DECREF(rvlist);
+		return NULL;
+	    }
+	}
+    } PATRICIA_WALK_END;
+    return rvlist;
+}
+
 static PyMappingMethods pytricia_as_mapping = {
     (lenfunc)pytricia_length,
     (binaryfunc)pytricia_subscript,
@@ -526,6 +575,7 @@ static PyMethodDef pytricia_methods[] = {
     {"get", (PyCFunction)pytricia_get, METH_VARARGS, "get(prefix, [default]) -> object\nReturn value associated with prefix."},
     {"delete", (PyCFunction)pytricia_delitem, METH_VARARGS, "delete(prefix) -> \nDelete mapping associated with prefix.\n"},
     {"insert", (PyCFunction)pytricia_insert, METH_VARARGS, "insert(prefix, data) -> data\nCreate mapping between prefix and data in tree."},
+    {"children", (PyCFunction)pytricia_children, METH_VARARGS, "children(prefix) -> list\nReturn a list of all prefixes that are more specific than the given prefix (the prefix must be present as an exact match)."},
     {NULL,              NULL}           /* sentinel */
 };
 
