@@ -83,6 +83,17 @@ Alternatively, use the ``get`` method:
     >>> pyt.get("10.0.0.0/24")
     'a'
 
+If you want access to the key instead (i.e. the longest matching prefix), use ``get_key``:
+
+    >>> pyt.get_key("10.1.0.0/16")
+    '10.1.0.0/16'
+    >>> pyt.get_key("10.1.0.0/24")
+    '10.1.0.0/16'
+    >>> pyt.get_key("10.1.0.0/32")
+    '10.1.0.0/16'
+    >>> pyt.get_key("10.0.0.0/24")
+    '10.0.0.0/8'
+
 The ``del`` operator works as it does with Python dictionaries (and there is also a ``delete`` method that works similarly):
 
     >>> del pyt["10.0.0.0/8"]
@@ -133,6 +144,26 @@ The ``has_key`` method is also implement, but it's important to note that the be
     >>> '10.0.0.0/8' in pyt
     True
     >>> 
+
+It is also possible to find the ``parent`` and ``children`` of a given prefix in the tree.  Similarly to the ``has_key`` method, the prefix must be present as an exact match in the tree.  For instance:
+
+    >>> pyt.parent('10.1.0.0/16')
+    '10.0.0.0/8'
+    >>> pyt.parent('10.0.0.0/8')
+    None
+    >>> pyt["10.1.1.0/24"] = 'c'
+    >>> pyt.children('10.0.0.0/8')
+    ['10.1.0.0/16', '10.1.1.0/24']
+    >>> pyt.children('10.1.0.0/16')
+    ['10.1.1.0/24']
+    >>> pyt.children('10.1.1.0/24')
+    []
+    >>> pyt.parent('10.1.42.0/24')
+    Traceback (most recent call last):
+      File "<stdin>", line 1, in <module>
+    KeyError: Prefix doesn't exist.
+
+If you want to get the longest matching prefix for arbitrary prefixes, you should use ``get_key``, not ``parent``.
 
 A ``PyTricia`` object is *almost* like a dictionary, but not quite.   You can extract the keys, but not the values:
 
