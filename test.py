@@ -343,6 +343,30 @@ class PyTriciaTests(unittest.TestCase):
             pyt.children("2001:db8:10:42:42::/96")
         self.assertIsInstance(cm.exception, KeyError)
 
+    def testParent(self):
+        pyt = pytricia.PyTricia()
+        pyt.insert("10.0.0.0/8", "a")
+        pyt.insert("10.100.0.0/16", "b")
+        pyt.insert("10.100.100.0/24", "c")
+        self.assertIsNone(pyt.parent("10.0.0.0/8"))
+        self.assertEqual("10.0.0.0/8", pyt.parent("10.100.0.0/16"))
+        self.assertEqual("10.100.0.0/16", pyt.parent("10.100.100.0/24"))
+        with self.assertRaises(KeyError) as cm:
+            pyt.parent("10.42.42.0/24")
+        self.assertIsInstance(cm.exception, KeyError)
+
+    def testParentIP6(self):
+        pyt = pytricia.PyTricia(128)
+        pyt.insert("2001:db8:10::/48", "a")
+        pyt.insert("2001:db8:10:100::/64", "b")
+        pyt.insert("2001:db8:10:100:100::/96", "c")
+        self.assertIsNone(pyt.parent("2001:db8:10::/48"))
+        self.assertEqual("2001:db8:10::/48", pyt.parent("2001:db8:10:100::/64"))
+        self.assertEqual("2001:db8:10:100::/64", pyt.parent("2001:db8:10:100:100::/96"))
+        with self.assertRaises(KeyError) as cm:
+            pyt.parent("2001:db8:42:42::/64")
+        self.assertIsInstance(cm.exception, KeyError)
+
 if __name__ == '__main__':
     unittest.main()
 
