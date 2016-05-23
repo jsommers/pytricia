@@ -199,6 +199,11 @@ The numbers below are based on running the program ``perftest.py`` (in the repo)
     Average execution time for radix: 1.306612914499965
     Average execution time for subnet: 1.1982004833000246
 
+# Acknowledgments
+
+This software is based up on work supported by the National Science Foundation under Grant No. CNS-1054985.  Any opinions, findings, and conclusions or recommendations expressed in this material are those of the author(s) and do not necessarily reflect the views of the National Science Foundation.
+
 -----
 
 Copyright (c) 2012-2016  Joel Sommers.  All rights reserved.
+
