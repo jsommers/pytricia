@@ -449,6 +449,7 @@ pytricia_get_key(register PyTricia *obj, PyObject *args) {
 
     prefix_t *prefix = _key_object_to_prefix(key);
     if (!prefix) {
+        PyErr_SetString(PyExc_ValueError, "Invalid prefix.");
         return NULL;
     }
     patricia_node_t* node = patricia_search_best(obj->m_tree, prefix);
@@ -462,7 +463,7 @@ pytricia_get_key(register PyTricia *obj, PyObject *args) {
     prefix_toa2x(node->prefix, buffer, 1);
     PyObject *item = Py_BuildValue("s", buffer);
     if (!item) {
-	return NULL;
+	   return NULL;
     }
     Py_INCREF(item);
     return item;
@@ -490,6 +491,7 @@ pytricia_has_key(PyTricia *self, PyObject *args) {
     
     prefix_t *prefix = _key_object_to_prefix(key);
     if (!prefix) {
+        PyErr_SetString(PyExc_ValueError, "Invalid prefix.");
         return NULL;
     }
     patricia_node_t* node = patricia_search_exact(self->m_tree, prefix);
@@ -538,6 +540,7 @@ pytricia_children(register PyTricia *self, PyObject *args) {
 
     prefix_t *prefix = _key_object_to_prefix(key);
     if (!prefix) {
+        PyErr_SetString(PyExc_ValueError, "Invalid prefix.");
         return NULL;
     }
 
@@ -549,30 +552,30 @@ pytricia_children(register PyTricia *self, PyObject *args) {
     patricia_node_t* base_node = patricia_search_exact(self->m_tree, prefix);
     Deref_Prefix(prefix);
     if (!base_node) {
-	PyErr_SetString(PyExc_KeyError, "Prefix doesn't exist.");
-	Py_DECREF(rvlist);
-	return NULL;
+	   PyErr_SetString(PyExc_KeyError, "Prefix doesn't exist.");
+	   Py_DECREF(rvlist);
+	   return NULL;
     }
     patricia_node_t* node = NULL;
     int err = 0;
 
     PATRICIA_WALK (base_node, node) {
-	/* Discard first prefix (we want strict children) */
-	if (node != base_node) {
-	    char buffer[64];
-	    prefix_toa2x(node->prefix, buffer, 1);
-	    PyObject *item = Py_BuildValue("s", buffer);
-	    if (!item) {
-		Py_DECREF(rvlist);
-		return NULL;
+    	/* Discard first prefix (we want strict children) */
+    	if (node != base_node) {
+    	    char buffer[64];
+    	    prefix_toa2x(node->prefix, buffer, 1);
+    	    PyObject *item = Py_BuildValue("s", buffer);
+    	    if (!item) {
+    		    Py_DECREF(rvlist);
+    		    return NULL;
+    	    }
+    	    err = PyList_Append(rvlist, item);
+    	    Py_INCREF(item);
+    	    if (err != 0) {
+    		    Py_DECREF(rvlist);
+    		    return NULL;
+    	    }
 	    }
-	    err = PyList_Append(rvlist, item);
-	    Py_INCREF(item);
-	    if (err != 0) {
-		Py_DECREF(rvlist);
-		return NULL;
-	    }
-	}
     } PATRICIA_WALK_END;
     return rvlist;
 }
@@ -587,14 +590,15 @@ pytricia_parent(register PyTricia *self, PyObject *args) {
 
     prefix_t *prefix = _key_object_to_prefix(key);
     if (!prefix) {
+        PyErr_SetString(PyExc_ValueError, "Invalid prefix.");
         return NULL;
     }
 
     patricia_node_t* node = patricia_search_exact(self->m_tree, prefix);
     Deref_Prefix(prefix);
     if (!node) {
-	PyErr_SetString(PyExc_KeyError, "Prefix doesn't exist.");
-	return NULL;
+	   PyErr_SetString(PyExc_KeyError, "Prefix doesn't exist.");
+	   return NULL;
     }
     patricia_node_t* parent_node = patricia_search_best2(self->m_tree, node->prefix, 0);
     if (!parent_node) {
@@ -605,7 +609,7 @@ pytricia_parent(register PyTricia *self, PyObject *args) {
     prefix_toa2x(parent_node->prefix, buffer, 1);
     PyObject *item = Py_BuildValue("s", buffer);
     if (!item) {
-	return NULL;
+	   return NULL;
     }
     Py_INCREF(item);
     return item;

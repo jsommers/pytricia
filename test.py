@@ -386,7 +386,13 @@ class PyTriciaTests(unittest.TestCase):
 
         with self.assertRaises(KeyError) as cm:
             pyt.delete("1.2.3.0/24")
-    
+
+        self.assertFalse(pyt.has_key('1.2.3.0/24'))
+        with self.assertRaises(ValueError) as cm:
+            pyt.has_key('1.2.3/24')
+
+        self.assertFalse('1.2.3.0/24' in pyt)
+
 
 if __name__ == '__main__':
     unittest.main()
