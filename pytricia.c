@@ -281,6 +281,7 @@ static PyObject*
 pytricia_subscript(PyTricia *self, PyObject *key) {
     prefix_t *subnet = _key_object_to_prefix(key);
     if (subnet == NULL) {
+        PyErr_SetString(PyExc_ValueError, "Invalid prefix.");
         return NULL;
     }
     patricia_node_t* node = patricia_search_best(self->m_tree, subnet);
@@ -301,6 +302,7 @@ static int
 pytricia_internal_delete(PyTricia *self, PyObject *key) {
     prefix_t *prefix = _key_object_to_prefix(key);
     if (prefix == NULL) {
+        PyErr_SetString(PyExc_ValueError, "Invalid prefix.");
         return -1;
     }
     patricia_node_t* node = patricia_search_exact(self->m_tree, prefix);
@@ -335,7 +337,7 @@ _pytricia_assign_subscript_internal(PyTricia *self, PyObject *key, PyObject *val
         prefix->bitlen = prefixlen;
     }
     patricia_node_t *node = patricia_lookup(self->m_tree, prefix);
-    Deref_Prefix (prefix);
+    Deref_Prefix(prefix);
     
     if (!node) {
         PyErr_SetString(PyExc_ValueError, "Error inserting into patricia tree");
@@ -361,6 +363,7 @@ pytricia_insert(PyTricia *self, PyObject *args) {
     PyObject *rhs = NULL;
 
     if (!PyArg_ParseTuple(args, "O|OO", &key, &value1, &value2)) { 
+        PyErr_SetString(PyExc_ValueError, "Invalid argument(s) to insert");
         return NULL;
     }
 
@@ -382,6 +385,7 @@ pytricia_insert(PyTricia *self, PyObject *args) {
         }
         int rv = _pytricia_assign_subscript_internal(self, key, rhs, prefixlen); 
         if (rv == -1) {
+            PyErr_SetString(PyExc_ValueError, "Invalid key.");
             return NULL;
         }
     } else {
@@ -396,7 +400,6 @@ static PyObject*
 pytricia_delitem(PyTricia *self, PyObject *args) {
     PyObject *key = NULL;
     if (!PyArg_ParseTuple(args, "O", &key)) {
-        PyErr_SetString(PyExc_ValueError, "Unclear what happened!");
         return NULL;
     }
     
@@ -415,9 +418,9 @@ pytricia_get(register PyTricia *obj, PyObject *args) {
     if (!PyArg_ParseTuple(args, "O|O:get", &key, &defvalue)) {
         return NULL;
     }
-    
     prefix_t *prefix = _key_object_to_prefix(key);
     if (!prefix) {
+        PyErr_SetString(PyExc_ValueError, "Invalid prefix.");
         return NULL;
     }
     patricia_node_t* node = patricia_search_best(obj->m_tree, prefix);

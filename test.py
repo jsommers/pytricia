@@ -367,6 +367,27 @@ class PyTriciaTests(unittest.TestCase):
             pyt.parent("2001:db8:42:42::/64")
         self.assertIsInstance(cm.exception, KeyError)
 
+    def testExceptions(self):
+        pyt = pytricia.PyTricia(32)
+        with self.assertRaises(ValueError) as cm:
+            pyt.insert("1.2.3/24", "a")
+
+        with self.assertRaises(KeyError) as cm:
+            pyt["1.2.3.0/24"] 
+
+        with self.assertRaises(ValueError) as cm:
+            pyt["1.2.3/24"] 
+
+        with self.assertRaises(ValueError) as cm:
+            pyt.get("1.2.3/24")
+
+        with self.assertRaises(ValueError) as cm:
+            pyt.delete("1.2.3/24")
+
+        with self.assertRaises(KeyError) as cm:
+            pyt.delete("1.2.3.0/24")
+    
+
 if __name__ == '__main__':
     unittest.main()
 
