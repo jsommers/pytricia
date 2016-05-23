@@ -83,7 +83,7 @@ Alternatively, use the ``get`` method:
     >>> pyt.get("10.0.0.0/24")
     'a'
 
-If you want access to the key instead (i.e. the longest matching prefix), use ``get_key``:
+If you want access to the key instead (i.e., the longest matching prefix), use ``get_key``:
 
     >>> pyt.get_key("10.1.0.0/16")
     '10.1.0.0/16'
