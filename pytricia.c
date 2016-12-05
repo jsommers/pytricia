@@ -344,6 +344,12 @@ _pytricia_assign_subscript_internal(PyTricia *self, PyObject *key, PyObject *val
         return -1;
     }
 
+    // node already existed, lower ref count on old data 
+    if (node->data) {
+        PyObject* data = (PyObject*)node->data;
+        Py_DECREF(data);
+    }
+
     Py_INCREF(value);
     node->data = value;
 
