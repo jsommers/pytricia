@@ -217,9 +217,14 @@ _key_object_to_prefix(PyObject *key) {
 }
 
 static void
+pytricia_xdecref(void *data) {
+    Py_XDECREF((PyObject*)data);
+}
+
+static void
 pytricia_dealloc(PyTricia* self) {
     if (self) {
-        Destroy_Patricia(self->m_tree, 0);
+        Destroy_Patricia(self->m_tree, pytricia_xdecref);
         Py_TYPE(self)->tp_free((PyObject*)self);
     }
 }
