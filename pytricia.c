@@ -217,9 +217,14 @@ _key_object_to_prefix(PyObject *key) {
 }
 
 static void
+pytricia_xdecref(void *data) {
+    Py_XDECREF((PyObject*)data);
+}
+
+static void
 pytricia_dealloc(PyTricia* self) {
     if (self) {
-        Destroy_Patricia(self->m_tree, 0);
+        Destroy_Patricia(self->m_tree, pytricia_xdecref);
         Py_TYPE(self)->tp_free((PyObject*)self);
     }
 }
@@ -344,6 +349,12 @@ _pytricia_assign_subscript_internal(PyTricia *self, PyObject *key, PyObject *val
         return -1;
     }
 
+    // node already existed, lower ref count on old data 
+    if (node->data) {
+        PyObject* data = (PyObject*)node->data;
+        Py_DECREF(data);
+    }
+
     Py_INCREF(value);
     node->data = value;
 
@@ -461,12 +472,7 @@ pytricia_get_key(register PyTricia *obj, PyObject *args) {
 
     char buffer[64];
     prefix_toa2x(node->prefix, buffer, 1);
-    PyObject *item = Py_BuildValue("s", buffer);
-    if (!item) {
-	   return NULL;
-    }
-    Py_INCREF(item);
-    return item;
+    return Py_BuildValue("s", buffer);
 }
 
 static int
@@ -521,7 +527,7 @@ pytricia_keys(register PyTricia *self, PyObject *unused) {
             return NULL;
         }
         err = PyList_Append(rvlist, item);
-        Py_INCREF(item);
+        Py_DECREF(item);
         if (err != 0) {
             Py_DECREF(rvlist);
             return NULL;
@@ -570,7 +576,7 @@ pytricia_children(register PyTricia *self, PyObject *args) {
     		    return NULL;
     	    }
     	    err = PyList_Append(rvlist, item);
-    	    Py_INCREF(item);
+    	    Py_DECREF(item);
     	    if (err != 0) {
     		    Py_DECREF(rvlist);
     		    return NULL;
@@ -607,12 +613,7 @@ pytricia_parent(register PyTricia *self, PyObject *args) {
 
     char buffer[64];
     prefix_toa2x(parent_node->prefix, buffer, 1);
-    PyObject *item = Py_BuildValue("s", buffer);
-    if (!item) {
-	   return NULL;
-    }
-    Py_INCREF(item);
-    return item;
+    return Py_BuildValue("s", buffer);
 }
 
 static PyMappingMethods pytricia_as_mapping = {
