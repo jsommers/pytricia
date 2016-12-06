@@ -472,12 +472,7 @@ pytricia_get_key(register PyTricia *obj, PyObject *args) {
 
     char buffer[64];
     prefix_toa2x(node->prefix, buffer, 1);
-    PyObject *item = Py_BuildValue("s", buffer);
-    if (!item) {
-	   return NULL;
-    }
-    Py_INCREF(item);
-    return item;
+    return Py_BuildValue("s", buffer);
 }
 
 static int
