@@ -527,7 +527,7 @@ pytricia_keys(register PyTricia *self, PyObject *unused) {
             return NULL;
         }
         err = PyList_Append(rvlist, item);
-        Py_INCREF(item);
+        Py_DECREF(item);
         if (err != 0) {
             Py_DECREF(rvlist);
             return NULL;
@@ -576,7 +576,7 @@ pytricia_children(register PyTricia *self, PyObject *args) {
     		    return NULL;
     	    }
     	    err = PyList_Append(rvlist, item);
-    	    Py_INCREF(item);
+    	    Py_DECREF(item);
     	    if (err != 0) {
     		    Py_DECREF(rvlist);
     		    return NULL;
