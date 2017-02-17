@@ -1,3 +1,21 @@
+#
+# This file is part of Pytricia.
+# Joel Sommers <jsommers@colgate.edu>
+# 
+# Pytricia is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+# 
+# Pytricia is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Lesser General Public License for more details.
+# 
+# You should have received a copy of the GNU Lesser General Public License
+# along with Pytricia.  If not, see <http://www.gnu.org/licenses/>.
+#
+
 from distutils.core import setup, Extension
 setup(name="pytricia", 
       version="0.9.1",
@@ -35,6 +53,6 @@ code, and has three things to recommend it over related modules
 
 See the github repo for documentation and some performance numbers: <https://github.com/jsommers/pytricia>.
 
-Pytricia is released under terms of the GPLv2.
+Pytricia is released under terms of the GNU Lesser General Public License.
 '''
 )

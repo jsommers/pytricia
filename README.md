@@ -5,10 +5,12 @@ It's based on Dave Plonka's modified patricia tree code, and has three things
 to recommend it over related modules (including py-radix and SubnetTree): 
 
  1. it's faster (see below),
- 1. it works in Python 3, and 
- 1. there are a few nicer library features for manipulating the structure.
+ 2. it works in Python 3, and 
+ 3. there are a few nicer library features for manipulating the structure.
 
-Pytricia is released under terms of the GPLv2.
+Copyright (c) 2012-2017  Joel Sommers.  All rights reserved.
+
+Pytricia is released under terms of the GNU Lesser General Public License.
 
 # Building 
 
@@ -203,7 +205,4 @@ The numbers below are based on running the program ``perftest.py`` (in the repo)
 
 This software is based up on work supported by the National Science Foundation under Grant No. CNS-1054985.  Any opinions, findings, and conclusions or recommendations expressed in this material are those of the author(s) and do not necessarily reflect the views of the National Science Foundation.
 
------
-
-Copyright (c) 2012-2016  Joel Sommers.  All rights reserved.
 
