@@ -10,7 +10,8 @@ to recommend it over related modules (including py-radix and SubnetTree):
 
 Copyright (c) 2012-2017  Joel Sommers.  All rights reserved.
 
-Pytricia is released under terms of the GNU Lesser General Public License.
+Pytricia is released under terms of the GNU Lesser General Public License,
+version 3.0 and greater.
 
 # Building 
 
