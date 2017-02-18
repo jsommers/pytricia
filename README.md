@@ -206,4 +206,3 @@ The numbers below are based on running the program ``perftest.py`` (in the repo)
 
 This software is based up on work supported by the National Science Foundation under Grant No. CNS-1054985.  Any opinions, findings, and conclusions or recommendations expressed in this material are those of the author(s) and do not necessarily reflect the views of the National Science Foundation.
 
-
