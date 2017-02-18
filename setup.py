@@ -53,6 +53,7 @@ code, and has three things to recommend it over related modules
 
 See the github repo for documentation and some performance numbers: <https://github.com/jsommers/pytricia>.
 
-Pytricia is released under terms of the GNU Lesser General Public License.
+Pytricia is released under terms of the GNU Lesser General Public License,
+version 3.
 '''
 )
