@@ -20,7 +20,10 @@ Building pytricia is done in the standard pythonic way:
     python setup.py build
     python setup.py install
 
-This code is beta quality at present but has been tested on OS X 10.11 and Ubuntu 14.04 (both 64 bit) and Python 2.7.6 and Python 3.5.1.
+This code is beta quality at present but has been tested on OS X 10.11 and Ubuntu 14.04 (both 64 bit) and Python 2.7.6 and Python 3.6.1.
+
+.. image:: https://travis-ci.org/jsommers/pytricia.svg?branch=master
+    :target: https://travis-ci.org/jsommers/pytricia
 
 # Examples
 
