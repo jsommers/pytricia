@@ -16,9 +16,9 @@
 # along with Pytricia.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-from distutils.core import setup, Extension
+from setuptools import setup, Extension
 setup(name="pytricia", 
-      version="0.9.4",
+      version="0.9.5",
       description="An efficient IP address storage and lookup module for Python.",
       author="Joel Sommers",
       author_email="jsommers@acm.org",
