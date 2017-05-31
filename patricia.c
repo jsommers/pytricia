@@ -78,8 +78,14 @@
 #include <stdio.h> 
 #include <stdlib.h> 
 #include <string.h> 
-#include <arpa/inet.h> 
 #include <sys/types.h> 
+#if defined(_WIN32) || defined(_WIN64)
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#pragma comment(lib, "Ws2_32.lib")
+#else
+#include <arpa/inet.h> 
+#endif
 
 #include "patricia.h"
 
@@ -214,7 +220,7 @@ prefix_toa2x (prefix_t *prefix, char *buff, int with_len)
 		{ /* for scope only */
 	   static struct buffer local_buff;
 		   buffp = &local_buff;
-	}
+	} 
 #    endif
 	if (buffp == NULL) {
 		/* XXX should we report an error? */
@@ -228,11 +234,11 @@ prefix_toa2x (prefix_t *prefix, char *buff, int with_len)
 	assert (prefix->bitlen <= 32);
 	a = prefix_touchar (prefix);
 	if (with_len) {
-		sprintf (buff, "%d.%d.%d.%d/%d", a[0], a[1], a[2], a[3],
+		snprintf (buff, 64, "%d.%d.%d.%d/%d", a[0], a[1], a[2], a[3],
 			 prefix->bitlen);
 	}
 	else {
-		sprintf (buff, "%d.%d.%d.%d", a[0], a[1], a[2], a[3]);
+		snprintf (buff, 64, "%d.%d.%d.%d", a[0], a[1], a[2], a[3]);
 	}
 	return (buff);
 	}
@@ -242,7 +248,7 @@ prefix_toa2x (prefix_t *prefix, char *buff, int with_len)
 	r = (char *) inet_ntop (AF_INET6, &prefix->add.sin6, buff, 48 /* a guess value */ );
 	if (r && with_len) {
 		assert (prefix->bitlen <= 128);
-		sprintf (buff + strlen (buff), "/%d", prefix->bitlen);
+		snprintf (buff+strlen(buff), 64-strlen(buff), "/%d", prefix->bitlen);
 	}
 	return (buff);
 	}

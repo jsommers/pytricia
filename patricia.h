@@ -82,8 +82,14 @@
 
 #define addroute make_and_lookup
 
+#if defined(_WIN32) || defined(_WIN64)
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#pragma comment(lib, "Ws2_32.lib")
+#else
 #include <netinet/in.h> 
 #include <sys/socket.h> 
+#endif
 
 /* { from mrt.h */
 

@@ -16,9 +16,16 @@
  * along with Pytricia.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <arpa/inet.h>
 #include <Python.h>
 #include "patricia.h"
+
+#if defined(_WIN32) || defined(_WIN64)
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#pragma comment(lib, "Ws2_32.lib")
+#else
+#include <arpa/inet.h>
+#endif
 
 typedef struct {
     PyObject_HEAD
