@@ -24,6 +24,8 @@ This code is beta quality at present but has been tested on OS X 10.11 and Ubunt
 
 [![Build Status](https://travis-ci.org/jsommers/pytricia.svg?branch=master)](https://travis-ci.org/jsommers/pytricia)    
 
+[![Research software impact](http://depsy.org/api/package/pypi/pytricia/badge.svg)](http://depsy.org/package/python/pytricia)
+
 # Examples
 
 Create a pytricia object and load a couple prefixes into it:
