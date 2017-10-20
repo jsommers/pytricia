@@ -648,7 +648,7 @@ patricia_search_best2 (patricia_tree_t *patricia, prefix_t *prefix, int inclusiv
 		break;
 	}
 
-	if (inclusive && node && node->prefix)
+	if (inclusive && node && node->prefix && node->bit <= bitlen)
 	stack[cnt++] = node;
 
 #ifdef PATRICIA_DEBUG
