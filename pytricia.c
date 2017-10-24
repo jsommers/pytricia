@@ -31,6 +31,7 @@ typedef struct {
     PyObject_HEAD
     patricia_tree_t *m_tree;
     int m_family;
+    u_short m_raw_output;
 } PyTricia;
 
 typedef struct {
@@ -183,6 +184,28 @@ _key_object_to_prefix(PyObject *key) {
         pfx_rv = New_Prefix(AF_INET, &packed_addr, 32);
     } else if (PyBytes_Check(key)) {
         pfx_rv = _bytes_to_prefix(key);
+    } else if (PyTuple_Check(key)) {
+        PyObject* value = PyTuple_GetItem(key, 0);
+        PyObject* size = PyTuple_GetItem(key, 1);
+        if (!PyBytes_Check(value)) {
+            PyErr_SetString(PyExc_ValueError, "Invalid key tuple value type");
+            return NULL;
+        }
+        Py_ssize_t slen = PyBytes_Size(value);
+        if (slen != 4 && slen != 16) {
+            PyErr_SetString(PyExc_ValueError, "Invalid key tuple value");
+            return NULL;
+        }
+        pfx_rv = _bytes_to_prefix(value);
+        if (pfx_rv) {
+	        if (!PyLong_Check(size)) {
+	            PyErr_SetString(PyExc_ValueError, "Invalid key tuple size type");
+	            return NULL;
+	        }
+	        unsigned long bitlen = PyLong_AsUnsignedLong(size);
+	        if (bitlen < pfx_rv->bitlen)
+	            pfx_rv->bitlen = bitlen;
+	    }
     }
 #if PY_MINOR_VERSION >= 4
     // do we have an IPv4/6Address or IPv4/6Network object (ipaddress
@@ -234,11 +257,57 @@ _key_object_to_prefix(PyObject *key) {
     } else if (PyLong_Check(key) || PyInt_Check(key)) {
         unsigned long packed_addr = htonl(PyInt_AsUnsignedLongMask(key));
         pfx_rv = New_Prefix(AF_INET, &packed_addr, 32);
+    } else if (PyTuple_Check(key)) {
+        PyObject* value = PyTuple_GetItem(key, 0);
+        PyObject* size = PyTuple_GetItem(key, 1);
+        if (!PyString_Check(value)) {
+            PyErr_SetString(PyExc_ValueError, "Invalid key tuple value type");
+            return NULL;
+        }
+        Py_ssize_t slen = PyString_Size(value);
+        if (slen != 4 && slen != 16) {
+            PyErr_SetString(PyExc_ValueError, "Invalid key tuple value");
+            return NULL;
+        }
+        char* temp = PyString_AsString(value);
+        pfx_rv = _packed_addr_to_prefix(temp, slen);
+        if (pfx_rv) {
+	        if (!PyLong_Check(size) && !PyInt_Check(size)) {
+	            PyErr_SetString(PyExc_ValueError, "Invalid key tuple size type");
+	            return NULL;
+	        }
+	        unsigned long bitlen = PyInt_AsLong(size);
+	        if (bitlen < pfx_rv->bitlen)
+	            pfx_rv->bitlen = bitlen;
+	    }
     } else {
         PyErr_SetString(PyExc_ValueError, "Invalid key type");
     }
 #endif
     return pfx_rv;
+}
+
+static PyObject *
+_prefix_to_key_object(prefix_t* prefix, int raw_output) {
+    if (raw_output) {
+        int addr_size;
+        char *addr = (char*) prefix_touchar(prefix);
+        if (prefix->family == AF_INET6) {
+            addr_size = 16;
+        } else {
+            addr_size = 4;
+        }
+        PyObject* value;
+#if PY_MAJOR_VERSION == 3
+        value = PyBytes_FromStringAndSize(addr, addr_size);
+#else
+        value = PyString_FromStringAndSize(addr, addr_size);
+#endif
+        return Py_BuildValue("(Oi)", value, prefix->bitlen);
+    }
+    char buffer[64];
+    prefix_toa2x(prefix, buffer, 1);
+    return Py_BuildValue("s", buffer);
 }
 
 static void
@@ -269,7 +338,8 @@ static int
 pytricia_init(PyTricia *self, PyObject *args, PyObject *kwds) {
     int prefixlen = 32;
     int family = AF_INET;
-    if (!PyArg_ParseTuple(args, "|ii", &prefixlen, &family)) {
+    PyObject* raw_output = NULL;
+    if (!PyArg_ParseTuple(args, "|iiO", &prefixlen, &family, &raw_output)) {
         self->m_tree = New_Patricia(1); // need to have *something* to dealloc
         PyErr_SetString(PyExc_ValueError, "Error parsing prefix length or address family");
         return -1;
@@ -289,6 +359,7 @@ pytricia_init(PyTricia *self, PyObject *args, PyObject *kwds) {
     
     self->m_tree = New_Patricia(prefixlen);
     self->m_family = family;
+    self->m_raw_output = raw_output && PyObject_IsTrue(raw_output);
     if (self->m_tree == NULL) {
         return -1;
     }
@@ -495,9 +566,7 @@ pytricia_get_key(register PyTricia *obj, PyObject *args) {
         Py_RETURN_NONE;
     }
 
-    char buffer[64];
-    prefix_toa2x(node->prefix, buffer, 1);
-    return Py_BuildValue("s", buffer);
+    return _prefix_to_key_object(node->prefix, obj->m_raw_output);
 }
 
 static int
@@ -544,9 +613,7 @@ pytricia_keys(register PyTricia *self, PyObject *unused) {
     int err = 0;
     
     PATRICIA_WALK (self->m_tree->head, node) {
-        char buffer[64];
-        prefix_toa2x(node->prefix, buffer, 1);
-        PyObject *item = Py_BuildValue("s", buffer);
+        PyObject *item = _prefix_to_key_object(node->prefix, self->m_raw_output);
         if (!item) {
             Py_DECREF(rvlist);
             return NULL;
@@ -583,30 +650,28 @@ pytricia_children(register PyTricia *self, PyObject *args) {
     patricia_node_t* base_node = patricia_search_exact(self->m_tree, prefix);
     Deref_Prefix(prefix);
     if (!base_node) {
-	   PyErr_SetString(PyExc_KeyError, "Prefix doesn't exist.");
-	   Py_DECREF(rvlist);
-	   return NULL;
+       PyErr_SetString(PyExc_KeyError, "Prefix doesn't exist.");
+       Py_DECREF(rvlist);
+       return NULL;
     }
     patricia_node_t* node = NULL;
     int err = 0;
 
     PATRICIA_WALK (base_node, node) {
-    	/* Discard first prefix (we want strict children) */
-    	if (node != base_node) {
-    	    char buffer[64];
-    	    prefix_toa2x(node->prefix, buffer, 1);
-    	    PyObject *item = Py_BuildValue("s", buffer);
-    	    if (!item) {
-    		    Py_DECREF(rvlist);
-    		    return NULL;
-    	    }
-    	    err = PyList_Append(rvlist, item);
-    	    Py_DECREF(item);
-    	    if (err != 0) {
-    		    Py_DECREF(rvlist);
-    		    return NULL;
-    	    }
-	    }
+        /* Discard first prefix (we want strict children) */
+        if (node != base_node) {
+            PyObject *item = _prefix_to_key_object(node->prefix, self->m_raw_output);
+            if (!item) {
+                Py_DECREF(rvlist);
+                return NULL;
+            }
+            err = PyList_Append(rvlist, item);
+            Py_DECREF(item);
+            if (err != 0) {
+                Py_DECREF(rvlist);
+                return NULL;
+            }
+        }
     } PATRICIA_WALK_END;
     return rvlist;
 }
@@ -636,9 +701,7 @@ pytricia_parent(register PyTricia *self, PyObject *args) {
         Py_RETURN_NONE;
     }
 
-    char buffer[64];
-    prefix_toa2x(parent_node->prefix, buffer, 1);
-    return Py_BuildValue("s", buffer);
+    return _prefix_to_key_object(parent_node->prefix, self->m_raw_output);
 }
 
 static PyMappingMethods pytricia_as_mapping = {
@@ -705,11 +768,7 @@ pytriciaiter_next(PyTriciaIter *iter)
             } 
 
             if (iter->m_Xnode->prefix) {
-                /* build Python value to hand back */
-                char buffer[64];
-                prefix_toa2x(iter->m_Xnode->prefix, buffer, 1);
-                PyObject *rv = Py_BuildValue("s", buffer);
-                return rv;
+                return _prefix_to_key_object(iter->m_Xnode->prefix, iter->m_parent->m_raw_output);
             } 
         } else {
             PyErr_SetNone(PyExc_StopIteration);

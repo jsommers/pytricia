@@ -411,6 +411,43 @@ class PyTriciaTests(unittest.TestCase):
 
         self.assertFalse('1.2.3.0/24' in pyt)
 
+    def testRaw(self):
+        pyt = pytricia.PyTricia(32, socket.AF_INET, True)
+        prefixes = [
+            (b'\x01\x02\x00\x00', 16),
+            (b'\x01\x02\x02\x00', 24),
+            (b'\x01\x02\x03\x00', 24),
+            (b'\x01\x02\x03\x04', 32)
+        ]
+        values = ["A", "B", "C", "D"]
+        for prefix, value in zip(prefixes, values):
+            pyt.insert(prefix, value)
+
+        with self.assertRaises(ValueError) as cm:
+            pyt.insert((b'invalid', 24), "Z")
+        self.assertEqual(pyt.get_key((b'\x01\x02\x02\x02', 30)), (b'\x01\x02\x02\x00', 24))
+        self.assertListEqual(sorted(pyt.keys()), sorted(prefixes))
+        self.assertEqual(pyt.parent((b'\x01\x02\x03\x04', 32)), (b'\x01\x02\x03\x00', 24))
+        self.assertListEqual(list(pyt.children((b'\x01\x02\x03\x00', 24))), [(b'\x01\x02\x03\x04', 32)])
+        self.assertListEqual(sorted(list(pyt)), sorted(prefixes))
+
+    def testRawIP6(self):
+        pyt = pytricia.PyTricia(128, socket.AF_INET6, True)
+        prefixes = [
+            (b'\xAA\xBB\xCC\xDD\xAA\xBB\xCC\xDD\xAA\xBB\xCC\xDD\x01\x02\x00\x00', 96+16),
+            (b'\xAA\xBB\xCC\xDD\xAA\xBB\xCC\xDD\xAA\xBB\xCC\xDD\x01\x02\x02\x00', 96+24),
+            (b'\xAA\xBB\xCC\xDD\xAA\xBB\xCC\xDD\xAA\xBB\xCC\xDD\x01\x02\x03\x00', 96+24),
+            (b'\xAA\xBB\xCC\xDD\xAA\xBB\xCC\xDD\xAA\xBB\xCC\xDD\x01\x02\x03\x04', 96+32)
+        ]
+        values = ["A", "B", "C", "D"]
+        for prefix, value in zip(prefixes, values):
+            pyt.insert(prefix, value)
+
+        self.assertEqual(pyt.get_key((b'\xAA\xBB\xCC\xDD\xAA\xBB\xCC\xDD\xAA\xBB\xCC\xDD\x01\x02\x02\x02', 96+30)), (b'\xAA\xBB\xCC\xDD\xAA\xBB\xCC\xDD\xAA\xBB\xCC\xDD\x01\x02\x02\x00', 96+24))
+        self.assertListEqual(sorted(pyt.keys()), sorted(prefixes))
+        self.assertEqual(pyt.parent((b'\xAA\xBB\xCC\xDD\xAA\xBB\xCC\xDD\xAA\xBB\xCC\xDD\x01\x02\x03\x04', 96+32)), (b'\xAA\xBB\xCC\xDD\xAA\xBB\xCC\xDD\xAA\xBB\xCC\xDD\x01\x02\x03\x00', 96+24))
+        self.assertListEqual(list(pyt.children((b'\xAA\xBB\xCC\xDD\xAA\xBB\xCC\xDD\xAA\xBB\xCC\xDD\x01\x02\x03\x00', 96+24))), [(b'\xAA\xBB\xCC\xDD\xAA\xBB\xCC\xDD\xAA\xBB\xCC\xDD\x01\x02\x03\x04', 96+32)])
+        self.assertListEqual(sorted(list(pyt)), sorted(prefixes))
 
 if __name__ == '__main__':
     unittest.main()
