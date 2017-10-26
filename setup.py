@@ -18,7 +18,7 @@
 
 from setuptools import setup, Extension
 setup(name="pytricia", 
-      version="0.9.6",
+      version="1.0.0",
       description="An efficient IP address storage and lookup module for Python.",
       author="Joel Sommers",
       author_email="jsommers@acm.org",
@@ -28,7 +28,6 @@ setup(name="pytricia",
       classifiers=[
               "Programming Language :: Python :: 2",
               "Programming Language :: Python :: 3",
-              "Development Status :: 4 - Beta",
               "Intended Audience :: Developers",
               "License :: OSI Approved :: GNU Lesser General Public License v3 or later (LGPLv3+)",
               "Operating System :: OS Independent",
