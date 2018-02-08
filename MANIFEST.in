@@ -4,3 +4,4 @@ include pytricia.c
 include MANIFEST.in
 include setup.py
 include README.md
+include COPYING.LESSER
