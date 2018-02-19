@@ -303,7 +303,10 @@ _prefix_to_key_object(prefix_t* prefix, int raw_output) {
 #else
         value = PyString_FromStringAndSize(addr, addr_size);
 #endif
-        return Py_BuildValue("(Oi)", value, prefix->bitlen);
+        PyObject* tuple;
+        tuple = Py_BuildValue("(Oi)", value, prefix->bitlen);
+        Py_XDECREF(value);
+        return tuple;
     }
     char buffer[64];
     prefix_toa2x(prefix, buffer, 1);
