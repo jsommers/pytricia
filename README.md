@@ -190,6 +190,16 @@ As with a dictionary, you can iterate over a ``PyTricia`` object.  Currently, th
     10.1.0.0/16 b
     >>> 
 
+Although it is possible to store IPv4 and IPv6 subnets in the same trie, this is generally not advisable. Consider the following example:
+
+    >>> import pytricia
+    >>> pyt = pytricia.PyTricia(128)
+    >>> pyt.insert('2000::/8', 'test')
+    >>> pyt.get_key('32.0.0.1')
+    '2000::/8'
+
+IPv4 address `32.0.0.1` matches `2000::/8` prefix due to the first octet being the same in both. In order to avoid this, separate tries should be used for IPv4 and IPv6 prefixes. Alternatively, [IPv4 addresses can be mapped to IPv6 addresses](https://en.wikipedia.org/wiki/IPv6#IPv4-mapped_IPv6_addresses).
+
 # Performance
 
 For API usage, the usual Python advice applies: using indexing is the fastest method for insertion, lookup, and removal.  See the ``apiperf.py`` script in the repo for some comparative numbers.  For Python 3, using ``ipaddress``-module objects is the slowest.  There's a price to pay for the convenience, unfortunately.
