@@ -576,7 +576,7 @@ static int
 pytricia_contains(PyTricia *self, PyObject *key) {
     prefix_t *prefix = _key_object_to_prefix(key);
     if (!prefix) {
-        return 0;        
+        return -1;
     }
     patricia_node_t* node = patricia_search_best(self->m_tree, prefix);
     Deref_Prefix(prefix);
