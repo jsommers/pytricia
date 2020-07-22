@@ -449,6 +449,74 @@ class PyTriciaTests(unittest.TestCase):
         self.assertListEqual(list(pyt.children((b'\xAA\xBB\xCC\xDD\xAA\xBB\xCC\xDD\xAA\xBB\xCC\xDD\x01\x02\x03\x00', 96+24))), [(b'\xAA\xBB\xCC\xDD\xAA\xBB\xCC\xDD\xAA\xBB\xCC\xDD\x01\x02\x03\x04', 96+32)])
         self.assertListEqual(sorted(list(pyt)), sorted(prefixes))
 
+    def testLongRaw(self):
+        pyt = pytricia.PyTricia(32, socket.AF_INET, 2)
+
+        prefixes = [
+            (16908288, 16),
+            (16908800, 24),
+            (16909056, 24),
+            (16909060, 32)
+        ]
+        values = ["A", "B", "C", "D"]
+        for prefix, value in zip(prefixes, values):
+            pyt.insert(prefix, value)
+
+        with self.assertRaises(ValueError) as cm:
+            pyt.insert((b'invalid', 24), "Z")
+
+        self.assertEqual(pyt.get_key((16908802, 30)), (16908800, 24))
+        self.assertListEqual(sorted(pyt.keys()), sorted(prefixes))
+        self.assertEqual(pyt.parent((16909060, 32)), (16909056, 24))
+        self.assertListEqual(list(pyt.children((16909056, 24))), [(16909060, 32)])
+        self.assertListEqual(sorted(list(pyt)), sorted(prefixes))
+
+    def testLongRawIP6(self):
+        pyt = pytricia.PyTricia(128, socket.AF_INET6, 2)
+
+        prefixes = [
+            (226943873969804260003059691566684831744, 96+16),
+            (226943873969804260003059691566684832256, 96+24),
+            (226943873969804260003059691566684832512, 96+24),
+            (226943873969804260003059691566684832516, 96+32)
+        ]
+
+        values = ["A", "B", "C", "D"]
+        for prefix, value in zip(prefixes, values):
+            pyt.insert(prefix, value)
+
+        self.assertEqual(pyt.get_key((226943873969804260003059691566684832258, 96+30)), (226943873969804260003059691566684832256, 96+24))
+        self.assertListEqual(sorted(pyt.keys()), sorted(prefixes))
+        self.assertEqual(pyt.parent((226943873969804260003059691566684832516, 96+32)), (226943873969804260003059691566684832512, 96+24))
+        self.assertListEqual(list(pyt.children((226943873969804260003059691566684832512, 96+24))), [(226943873969804260003059691566684832516, 96+32)])
+        self.assertListEqual(sorted(list(pyt)), sorted(prefixes))
+
+    def testLongRawIteration(self):
+        pyt = pytricia.PyTricia(32, socket.AF_INET, 2)
+
+        pyt.insert((167837696, 16), 'b')
+        pyt.insert((167772160, 8), 'a')
+        pyt.insert((167772416, 24), 'c')
+        pyt.insert((0, 0), 'default route')
+
+        self.assertListEqual(sorted([(0, 0), (167772160, 8), (167837696, 16), (167772416, 24)]), sorted(list(pyt.__iter__())))
+
+    def testLongRawIteration2(self):
+        pyt = pytricia.PyTricia(32, socket.AF_INET, 2)
+
+        pyt.insert((167837696, 16), 'b')
+        pyt.insert((167772160, 8), 'a')
+        pyt.insert((167772416, 24), 'c')
+        pyt.insert((0, 0), 'default route')
+
+
+        output = []
+        for prefix, prefix_len in pyt:
+            output.append((prefix, prefix_len))
+
+        self.assertListEqual(sorted([(0, 0), (167772160, 8), (167837696, 16), (167772416, 24)]), sorted(output))
+
+
 if __name__ == '__main__':
     unittest.main()
 
