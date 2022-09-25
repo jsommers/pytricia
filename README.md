@@ -15,9 +15,8 @@ version 3.0 and greater.
 
 ## Support further development of Pytricia
 
-I originally wrote this code with funding from the US National Science Foundation.  Development since 2016 has been on an "as I have time and motivation" basis.  If you or your organization gets benefit from this software and you'd like to see further development, please consider donating.
+I originally wrote this code with funding from the US National Science Foundation.  Development since 2016 has been on an "as I have time and motivation" basis.  If you or your organization gets benefit from this software and you'd like to see further development, [please consider donating](https://www.buymeacoffee.com/joelsommers).
 
-<script type="text/javascript" src="https://cdnjs.buymeacoffee.com/1.0.0/button.prod.min.js" data-name="bmc-button" data-slug="joelsommers" data-color="#FFDD00" data-emoji=""  data-font="Cookie" data-text="Buy me a coffee" data-outline-color="#000000" data-font-color="#000000" data-coffee-color="#ffffff" ></script>
 
 # Building 
 
