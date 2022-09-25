@@ -8,10 +8,16 @@ to recommend it over related modules (including py-radix and SubnetTree):
  2. it works in Python 3, and 
  3. there are a few nicer library features for manipulating the structure.
 
-Copyright (c) 2012-2017  Joel Sommers.  All rights reserved.
+Copyright (c) 2012-2022  Joel Sommers.  All rights reserved.
 
 Pytricia is released under terms of the GNU Lesser General Public License,
 version 3.0 and greater.
+
+## Support further development of Pytricia
+
+I originally wrote this code with funding from the US National Science Foundation.  Development since 2016 has been on an "as I have time and motivation" basis.  If you or your organization gets benefit from this software and you'd like to see further development, please consider donating.
+
+<script type="text/javascript" src="https://cdnjs.buymeacoffee.com/1.0.0/button.prod.min.js" data-name="bmc-button" data-slug="joelsommers" data-color="#FFDD00" data-emoji=""  data-font="Cookie" data-text="Buy me a coffee" data-outline-color="#000000" data-font-color="#000000" data-coffee-color="#ffffff" ></script>
 
 # Building 
 
