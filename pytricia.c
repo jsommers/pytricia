@@ -153,7 +153,7 @@ _bytes_to_prefix(PyObject *key) {
 #endif
 
 static prefix_t *
-_key_object_to_prefix(PyObject *key) {
+_key_object_to_prefix(PyObject *key, int family) {
     prefix_t *pfx_rv = NULL;
 #if PY_MAJOR_VERSION == 3
 #if PY_MINOR_VERSION >= 4
@@ -187,16 +187,34 @@ _key_object_to_prefix(PyObject *key) {
     } else if (PyTuple_Check(key)) {
         PyObject* value = PyTuple_GetItem(key, 0);
         PyObject* size = PyTuple_GetItem(key, 1);
-        if (!PyBytes_Check(value)) {
-            PyErr_SetString(PyExc_ValueError, "Invalid key tuple value type");
+
+        if (PyBytes_Check(value)) {
+            Py_ssize_t slen = PyBytes_Size(value);
+            if (slen != 4 && slen != 16) {
+                PyErr_SetString(PyExc_ValueError, "Invalid key tuple value (bytes)");
+                return NULL;
+            }
+            pfx_rv = _bytes_to_prefix(value);
+        } else if (PyLong_Check(value)) {
+            if (family == AF_INET) {
+                unsigned long packed_addr = htonl(PyLong_AsUnsignedLong(value));
+                pfx_rv = New_Prefix(AF_INET, &packed_addr, 32);
+            } else if (family == AF_INET6) {
+                struct in6_addr sin6;
+
+                /* Convert python long into in6_addr */
+                _PyLong_AsByteArray((PyLongObject *)value, (unsigned char *)&sin6, 16, 0, 0);
+
+                pfx_rv = New_Prefix(AF_INET6, &sin6, 128);
+            } else {
+                PyErr_SetString(PyExc_ValueError, "Invalid network family, must be AF_INET or AF_INET6");
+                return NULL;
+            }
+        } else {
+            PyErr_SetString(PyExc_TypeError, "Invalid key tuple value, type must be bytes or long");
             return NULL;
         }
-        Py_ssize_t slen = PyBytes_Size(value);
-        if (slen != 4 && slen != 16) {
-            PyErr_SetString(PyExc_ValueError, "Invalid key tuple value");
-            return NULL;
-        }
-        pfx_rv = _bytes_to_prefix(value);
+
         if (pfx_rv) {
 	        if (!PyLong_Check(size)) {
 	            PyErr_SetString(PyExc_ValueError, "Invalid key tuple size type");
@@ -260,17 +278,36 @@ _key_object_to_prefix(PyObject *key) {
     } else if (PyTuple_Check(key)) {
         PyObject* value = PyTuple_GetItem(key, 0);
         PyObject* size = PyTuple_GetItem(key, 1);
-        if (!PyString_Check(value)) {
-            PyErr_SetString(PyExc_ValueError, "Invalid key tuple value type");
+
+        if (PyString_Check(value)) {
+            Py_ssize_t slen = PyString_Size(value);
+            if (slen != 4 && slen != 16) {
+                PyErr_SetString(PyExc_ValueError, "Invalid key tuple value (string)");
+                return NULL;
+            }
+
+            char* temp = PyString_AsString(value);
+            pfx_rv = _packed_addr_to_prefix(temp, slen);
+        } else if (PyLong_Check(value) || PyInt_Check(value)) {
+             if (family == AF_INET) {
+                unsigned long packed_addr = htonl(PyInt_AsUnsignedLongMask(value));
+                pfx_rv = New_Prefix(AF_INET, &packed_addr, 32);
+            } else if (family == AF_INET6) {
+                struct in6_addr sin6;
+
+                /* Convert python long into in6_addr */
+                _PyLong_AsByteArray((PyLongObject *)value, (unsigned char *)&sin6, 16, 0, 0);
+
+                pfx_rv = New_Prefix(AF_INET6, &sin6, 128);
+            } else {
+                PyErr_SetString(PyExc_ValueError, "Invalid network family, must be AF_INET or AF_INET6");
+                return NULL;
+            }
+        } else {
+            PyErr_SetString(PyExc_ValueError, "Invalid key tuple value type, must be string or long");
             return NULL;
         }
-        Py_ssize_t slen = PyString_Size(value);
-        if (slen != 4 && slen != 16) {
-            PyErr_SetString(PyExc_ValueError, "Invalid key tuple value");
-            return NULL;
-        }
-        char* temp = PyString_AsString(value);
-        pfx_rv = _packed_addr_to_prefix(temp, slen);
+
         if (pfx_rv) {
 	        if (!PyLong_Check(size) && !PyInt_Check(size)) {
 	            PyErr_SetString(PyExc_ValueError, "Invalid key tuple size type");
@@ -288,8 +325,10 @@ _key_object_to_prefix(PyObject *key) {
 }
 
 static PyObject *
-_prefix_to_key_object(prefix_t* prefix, int raw_output) {
-    if (raw_output) {
+_prefix_to_key_object(prefix_t* prefix, int prefix_repr) {
+
+    // Raw bytes
+    if (prefix_repr == 1) {
         int addr_size;
         char *addr = (char*) prefix_touchar(prefix);
         if (prefix->family == AF_INET6) {
@@ -308,6 +347,25 @@ _prefix_to_key_object(prefix_t* prefix, int raw_output) {
         Py_XDECREF(value);
         return tuple;
     }
+
+    // Raw long
+    if (prefix_repr == 2) {
+        PyObject *value;
+
+        if (prefix->family == AF_INET6) {
+            /* Contains 128 bit integer representing the network address */
+            value = _PyLong_FromByteArray((unsigned char *)&prefix->add.sin.s_addr, 16, 0, 0);
+        } else {
+            value = PyLong_FromSsize_t(ntohl(prefix->add.sin.s_addr));
+        }
+
+        PyObject* tuple;
+        tuple = Py_BuildValue("(Oi)", value, prefix->bitlen);
+        Py_XDECREF(value);
+        return tuple;
+    }
+
+    // String
     char buffer[64];
     prefix_toa2x(prefix, buffer, 1);
     return Py_BuildValue("s", buffer);
@@ -342,6 +400,8 @@ pytricia_init(PyTricia *self, PyObject *args, PyObject *kwds) {
     int prefixlen = 32;
     int family = AF_INET;
     PyObject* raw_output = NULL;
+    u_short prefix_repr = 0;
+
     if (!PyArg_ParseTuple(args, "|iiO", &prefixlen, &family, &raw_output)) {
         self->m_tree = New_Patricia(1); // need to have *something* to dealloc
         PyErr_SetString(PyExc_ValueError, "Error parsing prefix length or address family");
@@ -359,10 +419,35 @@ pytricia_init(PyTricia *self, PyObject *args, PyObject *kwds) {
         PyErr_SetString(PyExc_ValueError, "Invalid address family; must be AF_INET (2) or AF_INET6 (30)");
         return -1;
     }
-    
+
+    if (raw_output != NULL) {
+        // 0: string output
+        // 1: raw bytes output
+        // 2: raw int output
+
+#if PY_MAJOR_VERSION == 3
+        u_short is_long = PyLong_Check(raw_output);
+#else
+        u_short is_long = PyLong_Check(raw_output) || PyInt_Check(raw_output);
+#endif
+        if (is_long) {
+            prefix_repr = PyLong_AsLong(raw_output);
+
+            if (prefix_repr < 0 || prefix_repr > 2) {
+                self->m_tree = New_Patricia(1); // need to have *something* to dealloc
+                PyErr_SetString(PyExc_ValueError, "Invalid prefix representation; must be STRING(0), RAW_BYTES(1) or RAW_INT(2)");
+                return -1;
+            }
+        } else if (PyBool_Check(raw_output)) {
+            if (PyObject_IsTrue(raw_output)) {
+                prefix_repr = 1;
+            }
+        }
+    }
+
     self->m_tree = New_Patricia(prefixlen);
     self->m_family = family;
-    self->m_raw_output = raw_output && PyObject_IsTrue(raw_output);
+    self->m_raw_output = prefix_repr;
     if (self->m_tree == NULL) {
         return -1;
     }
@@ -383,7 +468,7 @@ pytricia_length(PyTricia *self)
 
 static PyObject* 
 pytricia_subscript(PyTricia *self, PyObject *key) {
-    prefix_t *subnet = _key_object_to_prefix(key);
+    prefix_t *subnet = _key_object_to_prefix(key, self->m_family);
     if (subnet == NULL) {
         PyErr_SetString(PyExc_ValueError, "Invalid prefix.");
         return NULL;
@@ -404,7 +489,7 @@ pytricia_subscript(PyTricia *self, PyObject *key) {
 
 static int
 pytricia_internal_delete(PyTricia *self, PyObject *key) {
-    prefix_t *prefix = _key_object_to_prefix(key);
+    prefix_t *prefix = _key_object_to_prefix(key, self->m_family);
     if (prefix == NULL) {
         PyErr_SetString(PyExc_ValueError, "Invalid prefix.");
         return -1;
@@ -431,7 +516,7 @@ _pytricia_assign_subscript_internal(PyTricia *self, PyObject *key, PyObject *val
         return pytricia_internal_delete(self, key);
     }
     
-    prefix_t *prefix = _key_object_to_prefix(key);
+    prefix_t *prefix = _key_object_to_prefix(key, self->m_family);
     if (!prefix) {
         return -1;
     }
@@ -528,7 +613,7 @@ pytricia_get(register PyTricia *obj, PyObject *args) {
     if (!PyArg_ParseTuple(args, "O|O:get", &key, &defvalue)) {
         return NULL;
     }
-    prefix_t *prefix = _key_object_to_prefix(key);
+    prefix_t *prefix = _key_object_to_prefix(key, obj->m_family);
     if (!prefix) {
         PyErr_SetString(PyExc_ValueError, "Invalid prefix.");
         return NULL;
@@ -557,7 +642,7 @@ pytricia_get_key(register PyTricia *obj, PyObject *args) {
         return NULL;
     }
 
-    prefix_t *prefix = _key_object_to_prefix(key);
+    prefix_t *prefix = _key_object_to_prefix(key, obj->m_family);
     if (!prefix) {
         PyErr_SetString(PyExc_ValueError, "Invalid prefix.");
         return NULL;
@@ -574,7 +659,7 @@ pytricia_get_key(register PyTricia *obj, PyObject *args) {
 
 static int
 pytricia_contains(PyTricia *self, PyObject *key) {
-    prefix_t *prefix = _key_object_to_prefix(key);
+    prefix_t *prefix = _key_object_to_prefix(key, self->m_family);
     if (!prefix) {
         return -1;
     }
@@ -592,7 +677,7 @@ pytricia_has_key(PyTricia *self, PyObject *args) {
     if (!PyArg_ParseTuple(args, "O", &key))
         return NULL;
     
-    prefix_t *prefix = _key_object_to_prefix(key);
+    prefix_t *prefix = _key_object_to_prefix(key, self->m_family);
     if (!prefix) {
         PyErr_SetString(PyExc_ValueError, "Invalid prefix.");
         return NULL;
@@ -639,7 +724,7 @@ pytricia_children(register PyTricia *self, PyObject *args) {
         return NULL;
     }
 
-    prefix_t *prefix = _key_object_to_prefix(key);
+    prefix_t *prefix = _key_object_to_prefix(key, self->m_family);
     if (!prefix) {
         PyErr_SetString(PyExc_ValueError, "Invalid prefix.");
         return NULL;
@@ -687,7 +772,7 @@ pytricia_parent(register PyTricia *self, PyObject *args) {
         return NULL;
     }
 
-    prefix_t *prefix = _key_object_to_prefix(key);
+    prefix_t *prefix = _key_object_to_prefix(key, self->m_family);
     if (!prefix) {
         PyErr_SetString(PyExc_ValueError, "Invalid prefix.");
         return NULL;
