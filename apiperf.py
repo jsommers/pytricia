@@ -65,8 +65,8 @@ def main():
     for fn in expts:
         t = Timer("{}()".format(fn), "from __main__ import {}".format(fn))
         v = t.timeit(number=iterations)
-        v = v / float(iterations)
-        print ("{:.08f}s: average execution time for {}".format(v, fn))
+        v_iter = v / float(iterations)
+        print ("{:.08f}s: (average execution time for {}  total_sec={:.1f}".format(v_iter, fn, v))
 
 if __name__ == '__main__':
     main()

@@ -70,6 +70,8 @@
 #define _PATRICIA_H
 
 #include <sys/types.h>
+#include <stdio.h>
+
 
 #define HAVE_IPV6 1 // JS: force use of ip6
 
@@ -79,8 +81,6 @@
 #define MAXLINE 1024
 #define BIT_TEST(f, b)  ((f) & (b))
 /* } */
-
-#define addroute make_and_lookup
 
 #if defined(_WIN32) || defined(_WIN64)
 #include <winsock2.h>
@@ -126,8 +126,8 @@ typedef void (*void_fn1_t)(void *);
 typedef void (*void_fn2_t)(struct _prefix_t *, void *);
 
 typedef struct _patricia_node_t {
-   u_int bit;			
-   prefix_t *prefix;		
+   u_int bit;
+   prefix_t prefix;
    struct _patricia_node_t *l, *r;
    struct _patricia_node_t *parent;
    void *data;
@@ -152,19 +152,12 @@ void Clear_Patricia (patricia_tree_t *patricia, void_fn1_t func);
 void Destroy_Patricia (patricia_tree_t *patricia, void_fn1_t func);
 void patricia_process (patricia_tree_t *patricia, void_fn2_t func);
 
-void Deref_Prefix (prefix_t * prefix);
-prefix_t * New_Prefix(int, void *, int);
+int New_Prefix(int, void *, int, prefix_t*);
 
 /* { from demo.c */
 
-prefix_t *
-ascii2prefix (int family, char *string);
-
 char *
 prefix_toa2x(prefix_t *prefix, char *buff, int with_len);
-
-patricia_node_t *
-make_and_lookup (patricia_tree_t *tree, char *string);
 
 /* } */
 
@@ -181,7 +174,7 @@ make_and_lookup (patricia_tree_t *tree, char *string);
         patricia_node_t **Xsp = Xstack; \
         patricia_node_t *Xrn = (Xhead); \
         while ((Xnode = Xrn)) { \
-            if (Xnode->prefix)
+            if (Xnode->data)
 
 #define PATRICIA_WALK_ALL(Xhead, Xnode) \
 do { \
