@@ -205,6 +205,18 @@ Although it is possible to store IPv4 and IPv6 subnets in the same trie, this is
 
 IPv4 address `32.0.0.1` matches `2000::/8` prefix due to the first octet being the same in both. In order to avoid this, separate tries should be used for IPv4 and IPv6 prefixes. Alternatively, [IPv4 addresses can be mapped to IPv6 addresses](https://en.wikipedia.org/wiki/IPv6#IPv4-mapped_IPv6_addresses).
 
+``PyTricia`` objects can be be pickled, but you must first ``freeze()`` to reconfigure them to a more efficient representation suitable for serialization. Note that while in this more compact representation you can not modify the object. To restore the ability to modify you can use ``thaw()``.
+
+    >>> import pytricia
+    >>> import pickle
+    >>> pyt = pytricia.PyTricia()
+    >>> pyt.freeze()
+    >>> s = pickle.dumps(pyt)
+    >>> pyt = pickle.loads(s)
+    >>> pyt.thaw()
+
+
+
 # Performance
 
 For API usage, the usual Python advice applies: using indexing is the fastest method for insertion, lookup, and removal.  See the ``apiperf.py`` script in the repo for some comparative numbers.  For Python 3, using ``ipaddress``-module objects is the slowest.  There's a price to pay for the convenience, unfortunately.

@@ -23,6 +23,7 @@ import pytricia
 import socket
 import struct
 import sys
+import pickle
 
 def dumppyt(t):
     print ("\nDumping Pytricia")
@@ -448,6 +449,136 @@ class PyTriciaTests(unittest.TestCase):
         self.assertEqual(pyt.parent((b'\xAA\xBB\xCC\xDD\xAA\xBB\xCC\xDD\xAA\xBB\xCC\xDD\x01\x02\x03\x04', 96+32)), (b'\xAA\xBB\xCC\xDD\xAA\xBB\xCC\xDD\xAA\xBB\xCC\xDD\x01\x02\x03\x00', 96+24))
         self.assertListEqual(list(pyt.children((b'\xAA\xBB\xCC\xDD\xAA\xBB\xCC\xDD\xAA\xBB\xCC\xDD\x01\x02\x03\x00', 96+24))), [(b'\xAA\xBB\xCC\xDD\xAA\xBB\xCC\xDD\xAA\xBB\xCC\xDD\x01\x02\x03\x04', 96+32)])
         self.assertListEqual(sorted(list(pyt)), sorted(prefixes))
+
+    def testPickleMustFreeze(self):
+        pyt = pytricia.PyTricia()
+        pyt["10.0.0.0/8"] = 'a'
+        with self.assertRaises(RuntimeError):
+            s = pickle.dumps(pyt)
+        pyt.freeze()
+        s = pickle.dumps(pyt)
+
+        # no modification allowed while frozen
+        with self.assertRaises(ValueError):
+            pyt["10.1.0.0/16"] = 'b'
+        with self.assertRaises(ValueError):
+            del pyt["10.1.0.0/16"]
+        with self.assertRaises(ValueError):
+            pyt.delete("10.1.0.0/16")
+        with self.assertRaises(ValueError):
+            pyt.insert("10.1.0.0/16")
+        
+        # still frozen ofter pickle/unpickle
+        pyt = pickle.loads(s)
+        with self.assertRaises(ValueError):
+            pyt["10.1.0.0/16"] = 'b'
+        with self.assertRaises(ValueError):
+            del pyt["10.1.0.0/16"]
+        with self.assertRaises(ValueError):
+            pyt.delete("10.1.0.0/16")
+        with self.assertRaises(ValueError):
+            pyt.insert("10.1.0.0/16")
+
+
+    def testPickleEmpty(self):
+        """Make sure things function when pytri emtpy"""
+        pyt = pytricia.PyTricia()
+        pyt.freeze()
+        s = pickle.dumps(pyt)
+        pyt = pickle.loads(s)
+
+    def testPickleBasic(self):
+        pyt = pytricia.PyTricia()
+        pyt["10.0.0.0/8"] = 'a'
+        pyt["10.1.0.0/16"] = 'b'
+        pyt.freeze()
+        s = pickle.dumps(pyt)
+        pyt = pickle.loads(s)
+
+        self.assertEqual(pyt["10.0.0.0/8"], 'a')
+        self.assertEqual(pyt["10.1.0.0/16"], 'b')
+        self.assertEqual(pyt["10.0.0.0"], 'a')
+        self.assertEqual(pyt["10.1.0.0"], 'b')
+        self.assertEqual(pyt["10.1.0.1"], 'b')
+        self.assertEqual(pyt["10.0.0.1"], 'a')
+
+        self.assertTrue('10.0.0.0' in pyt)
+        self.assertTrue('10.1.0.0' in pyt)
+        self.assertTrue('10.0.0.1' in pyt)
+        self.assertFalse('9.0.0.0' in pyt)
+        self.assertFalse('0.0.0.0' in pyt)
+
+        self.assertTrue(pyt.has_key('10.0.0.0/8'))
+        self.assertTrue(pyt.has_key('10.1.0.0/16'))
+        self.assertFalse(pyt.has_key('10.2.0.0/16'))
+        self.assertFalse(pyt.has_key('9.0.0.0/8'))
+        self.assertFalse(pyt.has_key('10.0.0.1'))
+
+        self.assertTrue(pyt.has_key('10.0.0.0/8'))
+        self.assertTrue(pyt.has_key('10.1.0.0/16'))
+        self.assertFalse(pyt.has_key('10.2.0.0/16'))
+        self.assertFalse(pyt.has_key('9.0.0.0/8'))
+        self.assertFalse(pyt.has_key('10.0.0.0'))
+
+        self.assertListEqual(sorted(['10.0.0.0/8','10.1.0.0/16']), sorted(pyt.keys()))
+
+    def testPickleMoreComplex(self):
+        pyt = pytricia.PyTricia()
+        pyt["10.0.0.0/8"] = 'a'
+        pyt["10.1.0.0/16"] = 'b'
+        pyt["10.0.1.0/24"] = 'c'
+        pyt["0.0.0.0/0"] = 'default route'
+        pyt.freeze()
+        s = pickle.dumps(pyt)
+        pyt = pickle.loads(s)
+
+        self.assertEqual(pyt['10.0.0.1/32'], 'a')
+        self.assertEqual(pyt['10.0.0.1'], 'a')
+
+        self.assertFalse(pyt.has_key('1.0.0.0/8'))
+        # with 0.0.0.0/0, everything should be 'in'
+        for i in range(256):
+            self.assertTrue('{}.2.3.4'.format(i) in pyt)
+            # default for all but 10.0.0.0/8
+            if i != 10:
+                self.assertEqual(pyt['{}.2.3.4'.format(i)], 'default route')
+
+    def testPickleFreezeThaw(self):
+        pyt = pytricia.PyTricia()
+        pyt["10.0.0.0/8"] = 'a'
+        pyt.freeze()
+        s = pickle.dumps(pyt)
+        pyt = pickle.loads(s)
+        pyt.thaw()
+        pyt["10.1.0.0/16"] = 'b'
+
+        self.assertEqual(pyt["10.0.0.0/8"], 'a')
+        self.assertEqual(pyt["10.1.0.0/16"], 'b')
+        self.assertEqual(pyt["10.0.0.0"], 'a')
+        self.assertEqual(pyt["10.1.0.0"], 'b')
+        self.assertEqual(pyt["10.1.0.1"], 'b')
+        self.assertEqual(pyt["10.0.0.1"], 'a')
+
+        self.assertTrue('10.0.0.0' in pyt)
+        self.assertTrue('10.1.0.0' in pyt)
+        self.assertTrue('10.0.0.1' in pyt)
+        self.assertFalse('9.0.0.0' in pyt)
+        self.assertFalse('0.0.0.0' in pyt)
+
+        self.assertTrue(pyt.has_key('10.0.0.0/8'))
+        self.assertTrue(pyt.has_key('10.1.0.0/16'))
+        self.assertFalse(pyt.has_key('10.2.0.0/16'))
+        self.assertFalse(pyt.has_key('9.0.0.0/8'))
+        self.assertFalse(pyt.has_key('10.0.0.1'))
+
+        self.assertTrue(pyt.has_key('10.0.0.0/8'))
+        self.assertTrue(pyt.has_key('10.1.0.0/16'))
+        self.assertFalse(pyt.has_key('10.2.0.0/16'))
+        self.assertFalse(pyt.has_key('9.0.0.0/8'))
+        self.assertFalse(pyt.has_key('10.0.0.0'))
+
+        self.assertListEqual(sorted(['10.0.0.0/8','10.1.0.0/16']), sorted(pyt.keys()))
+
 
 if __name__ == '__main__':
     unittest.main()

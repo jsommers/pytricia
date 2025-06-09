@@ -335,6 +335,7 @@ New_Patricia (int maxbits)
 	patricia->maxbits = maxbits;
 	patricia->head = NULL;
 	patricia->num_active_node = 0;
+	patricia->frozen = 0;
 	assert (maxbits <= PATRICIA_MAXBITS); /* XXX */
 	num_active_patricia++;
 	return (patricia);
@@ -351,7 +352,6 @@ Clear_Patricia (patricia_tree_t *patricia, void_fn1_t func)
 {
 	assert (patricia);
 	if (patricia->head) {
-
 		patricia_node_t *Xstack[PATRICIA_MAXBITS+1];
 		patricia_node_t **Xsp = Xstack;
 		patricia_node_t *Xrn = patricia->head;
@@ -367,7 +367,9 @@ Clear_Patricia (patricia_tree_t *patricia, void_fn1_t func)
 			else {
 				assert (Xrn->data == NULL);
 			}
-			Delete (Xrn);
+			if(!patricia->frozen) {
+				Delete (Xrn);
+			}
 			patricia->num_active_node--;
 
 			if (l) {
@@ -385,7 +387,10 @@ Clear_Patricia (patricia_tree_t *patricia, void_fn1_t func)
 		}
 	}
 	assert (patricia->num_active_node == 0);
-	/* Delete (patricia); */
+	if(patricia->frozen && patricia->head) {
+		Delete (patricia->head);
+	}
+		/* Delete (patricia); */
 }
 
 
@@ -409,7 +414,7 @@ patricia_process (patricia_tree_t *patricia, void_fn2_t func)
 	assert (func);
 
 	PATRICIA_WALK (patricia->head, node) {
-	func (&node->prefix, node->data);
+		func (&node->prefix, node->data);
 	} PATRICIA_WALK_END;
 }
 
@@ -599,19 +604,19 @@ patricia_lookup (patricia_tree_t *patricia, prefix_t *prefix)
 	assert (prefix->bitlen <= patricia->maxbits);
 
 	if (patricia->head == NULL) {
-	node = calloc(1, sizeof *node);
-	node->bit = prefix->bitlen;
-	node->prefix = *prefix;
-	node->parent = NULL;
-	node->l = node->r = NULL;
-	node->data = NULL;
-	patricia->head = node;
+		node = calloc(1, sizeof *node);
+		node->bit = prefix->bitlen;
+		node->prefix = *prefix;
+		node->parent = NULL;
+		node->l = node->r = NULL;
+		node->data = NULL;
+		patricia->head = node;
 #ifdef PATRICIA_DEBUG
-	fprintf (stderr, "patricia_lookup: new_node #0 %s/%d (head)\n", 
-		 prefix_toa (prefix), prefix->bitlen);
+		fprintf (stderr, "patricia_lookup: new_node #0 %s/%d (head)\n", 
+			prefix_toa (prefix), prefix->bitlen);
 #endif /* PATRICIA_DEBUG */
-	patricia->num_active_node++;
-	return (node);
+		patricia->num_active_node++;
+		return (node);
 	}
 
 	addr = prefix_touchar (prefix);
@@ -620,33 +625,33 @@ patricia_lookup (patricia_tree_t *patricia, prefix_t *prefix)
 
 	while (node->bit < bitlen || node->data == NULL) {
 
-	if (node->bit < patricia->maxbits &&
-		BIT_TEST (addr[node->bit >> 3], 0x80 >> (node->bit & 0x07))) {
-		if (node->r == NULL)
-		break;
+		if (node->bit < patricia->maxbits &&
+			BIT_TEST (addr[node->bit >> 3], 0x80 >> (node->bit & 0x07))) {
+			if (node->r == NULL)
+				break;
 #ifdef PATRICIA_DEBUG
-		if (&node->prefix)
-			fprintf (stderr, "patricia_lookup: take right %s/%d\n", 
-				 prefix_toa (&node->prefix), node->prefix.bitlen);
-		else
-			fprintf (stderr, "patricia_lookup: take right at %d\n", node->bit);
+			if (&node->prefix)
+				fprintf (stderr, "patricia_lookup: take right %s/%d\n", 
+					prefix_toa (&node->prefix), node->prefix.bitlen);
+			else
+				fprintf (stderr, "patricia_lookup: take right at %d\n", node->bit);
 #endif /* PATRICIA_DEBUG */
-		node = node->r;
-	}
-	else {
-		if (node->l == NULL)
-			break;
+			node = node->r;
+		}
+		else {
+			if (node->l == NULL)
+				break;
 #ifdef PATRICIA_DEBUG
-		if (&node->prefix)
-			fprintf (stderr, "patricia_lookup: take left %s/%d\n", 
-				 prefix_toa (&node->prefix), node->prefix.bitlen);
-		else
-			fprintf (stderr, "patricia_lookup: take left at %d\n", node->bit);
+			if (&node->prefix)
+				fprintf (stderr, "patricia_lookup: take left %s/%d\n", 
+					prefix_toa (&node->prefix), node->prefix.bitlen);
+			else
+				fprintf (stderr, "patricia_lookup: take left at %d\n", node->bit);
 #endif /* PATRICIA_DEBUG */
-		node = node->l;
-	}
+			node = node->l;
+		}
 
-	assert (node);
+		assert (node);
 	}
 
 	assert (node->data);
