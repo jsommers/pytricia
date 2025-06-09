@@ -24,6 +24,9 @@ import socket
 import struct
 import sys
 import pickle
+import multiprocessing
+from multiprocessing import Process, Queue
+
 
 def dumppyt(t):
     print ("\nDumping Pytricia")
@@ -522,6 +525,33 @@ class PyTriciaTests(unittest.TestCase):
 
         self.assertListEqual(sorted(['10.0.0.0/8','10.1.0.0/16']), sorted(pyt.keys()))
 
+    def testPickleBasicSubprocess(self):
+        #NOTE: This is a bit odd for unittest but I've done this
+        #      specifically to ensure shared memory not possible
+        #      between the pickle/unpickle side. Without this isolation
+        #      it is possible for references to be put together incorrectly
+        #      but still *appear* to work due to old memory locations still
+        #      being accessible.
+        pyt = pytricia.PyTricia()
+        pyt["10.0.0.0/8"] = 'a'
+        pyt["10.1.0.0/16"] = 'b'
+        pyt.freeze()
+        pickled_data = pickle.dumps(pyt)
+
+        q = Queue()
+        p = Process(target=basicAsserts, args=(q, pickled_data))
+        p.start()
+        p.join()
+
+        if not q.empty():
+            status, msg = q.get()
+            if status == "success":
+                pass
+            else:
+                self.fail(f"Assertion failed in subprocess: {msg}")
+        else:
+            self.fail("No result received from subprocess")
+    
     def testPickleMoreComplex(self):
         pyt = pytricia.PyTricia()
         pyt["10.0.0.0/8"] = 'a'
@@ -580,6 +610,42 @@ class PyTriciaTests(unittest.TestCase):
         self.assertListEqual(sorted(['10.0.0.0/8','10.1.0.0/16']), sorted(pyt.keys()))
 
 
+def basicAsserts(q, pickled_data):
+    #NOTE: done this way specifically to ensure shared memory not possible
+    try:
+        pyt = pickle.loads(pickled_data)
+        assert(pyt["10.0.0.0/8"] == 'a')
+        assert(pyt["10.1.0.0/16"] == 'b')
+        assert(pyt["10.0.0.0"] == 'a')
+        assert(pyt["10.1.0.0"] == 'b')
+        assert(pyt["10.1.0.1"] == 'b')
+        assert(pyt["10.0.0.1"] == 'a')
+
+        assert('10.0.0.0' in pyt)
+        assert('10.1.0.0' in pyt)
+        assert('10.0.0.1' in pyt)
+        assert(not '9.0.0.0' in pyt)
+        assert(not '0.0.0.0' in pyt)
+
+        assert(pyt.has_key('10.0.0.0/8'))
+        assert(pyt.has_key('10.1.0.0/16'))
+        assert(not pyt.has_key('10.2.0.0/16'))
+        assert(not pyt.has_key('9.0.0.0/8'))
+        assert(not pyt.has_key('10.0.0.1'))
+
+        assert(pyt.has_key('10.0.0.0/8'))
+        assert(pyt.has_key('10.1.0.0/16'))
+        assert(not pyt.has_key('10.2.0.0/16'))
+        assert(not pyt.has_key('9.0.0.0/8'))
+        assert(not pyt.has_key('10.0.0.0'))
+    except Exception as e:
+        q.put(('error', str(e)))
+        return
+    q.put(('success',None))
+
+
 if __name__ == '__main__':
+    # Set this way specifically for the multiprocess test above
+    multiprocessing.set_start_method('spawn')
     unittest.main()
 

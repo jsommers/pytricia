@@ -726,7 +726,7 @@ pytricia_freeze(register PyTricia *self, PyObject *unused) {
 
     // Get count of all nodes
     size_t count = 0;
-    PATRICIA_WALK (self->m_tree->head, node) {
+    PATRICIA_WALK_ALL (self->m_tree->head, node) {
         count += 1;
     } PATRICIA_WALK_END;
 
@@ -735,7 +735,8 @@ pytricia_freeze(register PyTricia *self, PyObject *unused) {
 
     // copy all nodes to new array and discard originals
     size_t idx = 0;
-    PATRICIA_WALK (self->m_tree->head, node) {
+    patricia_node_t** free_list = calloc(count, sizeof(patricia_node_t*));
+    PATRICIA_WALK_ALL (self->m_tree->head, node) {
         new_node[idx] = *node;
         if(node->l)
             node->l->parent = &(new_node[idx]);
@@ -751,9 +752,16 @@ pytricia_freeze(register PyTricia *self, PyObject *unused) {
         else {
             node->parent->l = &(new_node[idx]);
         }
+        free_list[idx] = node;
         idx++;
-        free(node);
     } PATRICIA_WALK_END;
+
+    // clearing via free_list because otherise PATRICIA_WALK_END
+    // will illegally reference items from node to determine next steps
+    for(size_t i=0; i<count; i++) {
+        free(free_list[i]);
+    }
+    free(free_list);
 
     // mark as frozen
     self->m_tree->frozen = 1;
@@ -775,7 +783,7 @@ pytricia_thaw(register PyTricia *self, PyObject *unused) {
     // walk all nodes, allocating heap space for individual
     // nodes and re-linking
     patricia_node_t *node = NULL;
-    PATRICIA_WALK (self->m_tree->head, node) {
+    PATRICIA_WALK_ALL (self->m_tree->head, node) {
         patricia_node_t* new_node = calloc(1, sizeof(patricia_node_t));
         *new_node = *node;
         if(node->l)
@@ -839,7 +847,7 @@ static PyObject* pytricia_reduce(PyTricia *self, PyObject *Py_UNUSED(ignored)) {
     // Now set nodes internal block
     patricia_node_t *node = NULL;
     size_t count = 0;
-    PATRICIA_WALK (self->m_tree->head, node) {
+    PATRICIA_WALK_ALL (self->m_tree->head, node) {
         count += 1;
     } PATRICIA_WALK_END;
 
@@ -860,10 +868,18 @@ static PyObject* pytricia_reduce(PyTricia *self, PyObject *Py_UNUSED(ignored)) {
 
     count = 0;
     if (self->m_tree->head) {
-        PATRICIA_WALK (self->m_tree->head, node) {
-            // SET_ITEM steal reference so increment in advance to keep original
-            Py_INCREF(node->data);
-            PyList_SET_ITEM(list, count, node->data);
+        PATRICIA_WALK_ALL (self->m_tree->head, node) {
+            // some nodes may be glued in middle and will have prefix, but not data
+            // In case of no data, we'll leave the list entry as default (None)
+            if(node->data) {
+                // SET_ITEM steal reference so increment in advance to keep original
+                Py_INCREF(node->data);
+                PyList_SET_ITEM(list, count, node->data);
+            }
+            else {
+                Py_INCREF(Py_None);
+                PyList_SET_ITEM(list, count, Py_None);
+            }
             count += 1;
         } PATRICIA_WALK_END;
     }
@@ -906,27 +922,27 @@ static PyObject* pytricia_setstate(PyTricia *self, PyObject *args) {
         return NULL;
     }
     if (PyBytes_Size(nodebytes)) {
+        patricia_node_t* original_head = self->m_tree->head;
         self->m_tree->head = calloc(1, PyBytes_Size(nodebytes));
+        ssize_t offset_bytes = (char*)self->m_tree->head - (char*)original_head;
         size_t num_nodes = PyBytes_Size(nodebytes) / sizeof(patricia_node_t);
         if(self->m_tree->head == NULL) {
             PyErr_SetString(PyExc_MemoryError, "__setstate__ error allocating space for nodes");
             return NULL;
         }
-        patricia_node_t* original_head = self->m_tree->head;
         memcpy(self->m_tree->head, PyBytes_AsString(nodebytes), PyBytes_Size(nodebytes));
-        ssize_t offset = self->m_tree->head - original_head;
-
+ 
         // Now re-write the links relative to the start of the contiguous memory block
         patricia_node_t *node = self->m_tree->head;
         for(size_t i=0; i<num_nodes; i++) {
             if(node->parent) {
-                node->parent += offset;
+                node->parent = (patricia_node_t*)((char*)node->parent + offset_bytes);
             }
             if(node->l) {
-                node->l += offset;
+                node->l = (patricia_node_t*)((char*)node->l + offset_bytes);
             }
             if(node->r) {
-                node->r += offset;
+                node->r = (patricia_node_t*)((char*)node->r + offset_bytes);
             }
             node++;
         }
@@ -948,10 +964,15 @@ static PyObject* pytricia_setstate(PyTricia *self, PyObject *args) {
     patricia_node_t *node = NULL;
     size_t count = 0;
     if (self->m_tree->head) {
-        PATRICIA_WALK (self->m_tree->head, node) {
-            // SET_ITEM steal reference so increment in advance to keep original
+        PATRICIA_WALK_ALL (self->m_tree->head, node) {
             node->data = PyList_GET_ITEM(list, count);
             Py_INCREF(node->data); // make our own reference
+            // in special case of glue node with data value of None
+            // we'll want to remove python None and instead use NULL
+            if (node->data == Py_None) {
+                Py_DECREF(node->data);
+                node->data = NULL;
+            }
             count += 1;
         } PATRICIA_WALK_END;
     }
