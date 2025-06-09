@@ -907,11 +907,29 @@ static PyObject* pytricia_setstate(PyTricia *self, PyObject *args) {
     }
     if (PyBytes_Size(nodebytes)) {
         self->m_tree->head = calloc(1, PyBytes_Size(nodebytes));
+        size_t num_nodes = PyBytes_Size(nodebytes) / sizeof(patricia_node_t);
         if(self->m_tree->head == NULL) {
             PyErr_SetString(PyExc_MemoryError, "__setstate__ error allocating space for nodes");
             return NULL;
         }
+        patricia_node_t* original_head = self->m_tree->head;
         memcpy(self->m_tree->head, PyBytes_AsString(nodebytes), PyBytes_Size(nodebytes));
+        ssize_t offset = self->m_tree->head - original_head;
+
+        // Now re-write the links relative to the start of the contiguous memory block
+        patricia_node_t *node = self->m_tree->head;
+        for(size_t i=0; i<num_nodes; i++) {
+            if(node->parent) {
+                node->parent += offset;
+            }
+            if(node->l) {
+                node->l += offset;
+            }
+            if(node->r) {
+                node->r += offset;
+            }
+            node++;
+        }
     }
 
     // Restore node data items
