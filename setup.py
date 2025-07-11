@@ -18,7 +18,7 @@
 
 from setuptools import setup, Extension
 setup(name="pytricia", 
-      version="1.1.0",
+      version="1.2.0",
       description="An efficient IP address storage and lookup module for Python.",
       author="Joel Sommers",
       author_email="jsommers@acm.org",
@@ -36,7 +36,9 @@ setup(name="pytricia",
               "Topic :: Scientific/Engineering",
       ],
       ext_modules=[
-         Extension("pytricia", ["pytricia.c","patricia.c"]),
+         Extension("pytricia", ["pytricia.c","patricia.c"],
+                        # extra_compile_args = ["-g", "-O0"]  # Enable debug info, disable optimization
+                   ),
          ],
       long_description='''
 Pytricia is a Python module to store IP prefixes in a

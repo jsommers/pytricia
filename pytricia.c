@@ -404,6 +404,10 @@ pytricia_subscript(PyTricia *self, PyObject *key) {
 
 static int
 pytricia_internal_delete(PyTricia *self, PyObject *key) {
+    if (self->m_tree->frozen) {
+        PyErr_SetString(PyExc_ValueError, "can not modify a frozen pytricia!  Thaw?");
+        return -1;
+    }
     prefix_t prefix; memset(&prefix, 0, sizeof(prefix));
 
     int ret_ok = _key_object_to_prefix(key, &prefix);
@@ -431,7 +435,12 @@ _pytricia_assign_subscript_internal(PyTricia *self, PyObject *key, PyObject *val
     if (!value) {
         return pytricia_internal_delete(self, key);
     }
-    
+
+    if (self->m_tree->frozen) {
+        PyErr_SetString(PyExc_ValueError, "can not modify a frozen pytricia!  Thaw?");
+        return -1;
+    }
+
     prefix_t prefix; memset(&prefix, 0, sizeof(prefix));
     int ret_ok = _key_object_to_prefix(key, &prefix);
     if (!ret_ok) {
@@ -707,6 +716,270 @@ pytricia_parent(register PyTricia *self, PyObject *args) {
     return _prefix_to_key_object(&parent_node->prefix, self->m_raw_output);
 }
 
+static PyObject*
+pytricia_freeze(register PyTricia *self, PyObject *unused) {
+    if (self->m_tree->frozen) {
+        Py_RETURN_NONE;
+    }
+
+    patricia_node_t *node = NULL;
+
+    // Get count of all nodes
+    size_t count = 0;
+    PATRICIA_WALK_ALL (self->m_tree->head, node) {
+        count += 1;
+    } PATRICIA_WALK_END;
+
+    // allocate contiguous space for all nodes
+    patricia_node_t* new_node = calloc(count, sizeof(patricia_node_t));
+
+    // copy all nodes to new array and discard originals
+    size_t idx = 0;
+    patricia_node_t** free_list = calloc(count, sizeof(patricia_node_t*));
+    PATRICIA_WALK_ALL (self->m_tree->head, node) {
+        new_node[idx] = *node;
+        if(node->l)
+            node->l->parent = &(new_node[idx]);
+        if(node->r)
+            node->r->parent = &(new_node[idx]);
+        if(node->parent == NULL) {
+            assert (self->m_tree->head == node);
+            self->m_tree->head = new_node;
+        }
+        else if (node->parent->r == node) {
+            node->parent->r = &(new_node[idx]);
+        }
+        else {
+            node->parent->l = &(new_node[idx]);
+        }
+        free_list[idx] = node;
+        idx++;
+    } PATRICIA_WALK_END;
+
+    // clearing via free_list because otherise PATRICIA_WALK_END
+    // will illegally reference items from node to determine next steps
+    for(size_t i=0; i<count; i++) {
+        free(free_list[i]);
+    }
+    free(free_list);
+
+    // mark as frozen
+    self->m_tree->frozen = 1;
+
+    Py_RETURN_NONE;
+}
+
+static PyObject*
+pytricia_thaw(register PyTricia *self, PyObject *unused) {
+    if (!self->m_tree->frozen) {
+        Py_RETURN_NONE;  // already thaw'd
+    }
+    if (self->m_tree->head == NULL) {
+        self->m_tree->frozen = 0;
+        Py_RETURN_NONE;
+    }
+    patricia_node_t* original_head = self->m_tree->head;
+
+    // walk all nodes, allocating heap space for individual
+    // nodes and re-linking
+    patricia_node_t *node = NULL;
+    PATRICIA_WALK_ALL (self->m_tree->head, node) {
+        patricia_node_t* new_node = calloc(1, sizeof(patricia_node_t));
+        *new_node = *node;
+        if(node->l)
+            node->l->parent = new_node;
+        if(node->r)
+            node->r->parent = new_node;
+        if(node->parent == NULL) {
+            assert (self->m_tree->head == node);
+            self->m_tree->head = new_node;
+        }
+        else if (node->parent->r == node) {
+            node->parent->r = new_node;
+        }
+        else {
+            node->parent->l = new_node;
+        }
+    } PATRICIA_WALK_END;
+
+    free(original_head);
+
+    // mark as NOT frozen
+    self->m_tree->frozen = 0;
+
+    Py_RETURN_NONE;
+}
+
+// forward declaration
+static PyTypeObject PyTriciaType;
+
+static PyObject* pytricia_reduce(PyTricia *self, PyObject *Py_UNUSED(ignored)) {
+    if (!self->m_tree->frozen) {
+        PyErr_SetString(PyExc_RuntimeError, "pytri must be frozen before attempting to pickle!");
+        return NULL;
+    }
+
+    PyObject *args = PyTuple_New(1);
+    if (!args) {
+      return NULL;
+    }
+    PyTuple_SET_ITEM(args, 0, PyLong_FromLong(self->m_tree->maxbits));
+
+    // setup the extra dictionary info for setstate
+    PyObject* dict = PyDict_New();
+    PyObject* bytes = PyBytes_FromStringAndSize((const char*)self->m_tree, sizeof(patricia_tree_t));
+
+    if (!dict || !bytes) {
+	    PyErr_SetString(PyExc_MemoryError, "unable to allocate space for tri");
+        Py_XDECREF(dict);
+        Py_XDECREF(bytes);
+        return NULL;
+    }
+
+    int ret_err = PyDict_SetItemString(dict, "tree", bytes);
+    Py_DECREF(bytes);  // dictionary now owns the reference
+    if(ret_err) {
+        PyErr_SetString(PyExc_MemoryError, "error writing tree_t to dictionary");
+        Py_DECREF(dict);
+        return NULL;
+    }
+
+    // Now set nodes internal block
+    patricia_node_t *node = NULL;
+    size_t count = 0;
+    PATRICIA_WALK_ALL (self->m_tree->head, node) {
+        count += 1;
+    } PATRICIA_WALK_END;
+
+    bytes = PyBytes_FromStringAndSize((const char*)self->m_tree->head, sizeof(patricia_node_t)*count);
+    ret_err = PyDict_SetItemString(dict, "nodes", bytes);
+    Py_DECREF(bytes);  // dictionary now owns the reference
+    if(ret_err) {
+        PyErr_SetString(PyExc_MemoryError, "error writing nodes to dictionary");
+        Py_DECREF(dict);
+        return NULL;
+    }
+
+    PyObject* list = PyList_New(count);
+    if (!list) {
+        PyErr_SetString(PyExc_MemoryError, "error allocating data list");
+        return NULL;
+    }
+
+    count = 0;
+    if (self->m_tree->head) {
+        PATRICIA_WALK_ALL (self->m_tree->head, node) {
+            // some nodes may be glued in middle and will have prefix, but not data
+            // In case of no data, we'll leave the list entry as default (None)
+            if(node->data) {
+                // SET_ITEM steal reference so increment in advance to keep original
+                Py_INCREF(node->data);
+                PyList_SET_ITEM(list, count, node->data);
+            }
+            else {
+                Py_INCREF(Py_None);
+                PyList_SET_ITEM(list, count, Py_None);
+            }
+            count += 1;
+        } PATRICIA_WALK_END;
+    }
+
+    ret_err = PyDict_SetItemString(dict, "data", list);
+    Py_DECREF(list);  // dictionary now owns the reference
+    if(ret_err) {
+        PyErr_SetString(PyExc_MemoryError, "error writing data list to dictionary");
+        Py_DECREF(dict);
+        return NULL;
+    }
+
+    PyObject* out_tuple = PyTuple_Pack(3, (PyObject*)Py_TYPE(self), args, dict);
+    Py_DECREF(args);
+    Py_DECREF(dict);
+    return out_tuple;
+}
+
+static PyObject* pytricia_setstate(PyTricia *self, PyObject *args) {
+    PyObject *state;
+    if (!PyArg_ParseTuple(args, "O", &state)) {
+        return NULL;
+    }
+    if (!PyDict_Check(state)) {
+      PyErr_SetString(PyExc_TypeError, "__setstate__ argument must be a dictionary");
+      return NULL;
+    }
+
+    PyObject* bytes = PyDict_GetItemString(state, "tree");
+    if (!bytes || !PyBytes_Check(bytes) || PyBytes_Size(bytes) != sizeof(patricia_tree_t)) {
+      PyErr_SetString(PyExc_TypeError, "__setstate__ failed tree type checking");
+      return NULL;
+    }
+    memcpy(self->m_tree, PyBytes_AsString(bytes), sizeof(patricia_tree_t));
+    
+    // restore head/node data
+    PyObject* nodebytes = PyDict_GetItemString(state, "nodes");
+    if (!PyBytes_Check(nodebytes)) {
+        PyErr_SetString(PyExc_TypeError, "__setstate__ failed nodes type checking");
+        return NULL;
+    }
+    if (PyBytes_Size(nodebytes)) {
+        patricia_node_t* original_head = self->m_tree->head;
+        self->m_tree->head = calloc(1, PyBytes_Size(nodebytes));
+        ssize_t offset_bytes = (char*)self->m_tree->head - (char*)original_head;
+        size_t num_nodes = PyBytes_Size(nodebytes) / sizeof(patricia_node_t);
+        if(self->m_tree->head == NULL) {
+            PyErr_SetString(PyExc_MemoryError, "__setstate__ error allocating space for nodes");
+            return NULL;
+        }
+        memcpy(self->m_tree->head, PyBytes_AsString(nodebytes), PyBytes_Size(nodebytes));
+ 
+        // Now re-write the links relative to the start of the contiguous memory block
+        patricia_node_t *node = self->m_tree->head;
+        for(size_t i=0; i<num_nodes; i++) {
+            if(node->parent) {
+                node->parent = (patricia_node_t*)((char*)node->parent + offset_bytes);
+            }
+            if(node->l) {
+                node->l = (patricia_node_t*)((char*)node->l + offset_bytes);
+            }
+            if(node->r) {
+                node->r = (patricia_node_t*)((char*)node->r + offset_bytes);
+            }
+            node++;
+        }
+    }
+
+    // Restore node data items
+    PyObject* list = PyDict_GetItemString(state, "data");
+    if (!PyList_Check(list)) {
+        PyErr_SetString(PyExc_TypeError, "__setstate__ data is not list as expected!");
+        return NULL;
+    }
+    else {
+        Py_ssize_t list_len = PyList_Size(list);
+        if (list_len * (Py_ssize_t)sizeof(patricia_node_t) != PyBytes_Size(nodebytes)) {
+            PyErr_SetString(PyExc_TypeError, "__setstate__ node and data list sizes inconsistent!");
+            return NULL;
+        }
+    }
+    patricia_node_t *node = NULL;
+    size_t count = 0;
+    if (self->m_tree->head) {
+        PATRICIA_WALK_ALL (self->m_tree->head, node) {
+            node->data = PyList_GET_ITEM(list, count);
+            Py_INCREF(node->data); // make our own reference
+            // in special case of glue node with data value of None
+            // we'll want to remove python None and instead use NULL
+            if (node->data == Py_None) {
+                Py_DECREF(node->data);
+                node->data = NULL;
+            }
+            count += 1;
+        } PATRICIA_WALK_END;
+    }
+
+    Py_RETURN_NONE;
+}
+
 static PyMappingMethods pytricia_as_mapping = {
     (lenfunc)pytricia_length,
     (binaryfunc)pytricia_subscript,
@@ -740,6 +1013,10 @@ static PyMethodDef pytricia_methods[] = {
     {"insert", (PyCFunction)pytricia_insert, METH_VARARGS, "insert(prefix, data) -> data\nCreate mapping between prefix and data in tree."},
     {"children", (PyCFunction)pytricia_children, METH_VARARGS, "children(prefix) -> list\nReturn a list of all prefixes that are more specific than the given prefix (the prefix must be present as an exact match)."},
     {"parent", (PyCFunction)pytricia_parent, METH_VARARGS, "parent(prefix) -> prefix\nReturn the immediate parent of the given prefix (the prefix must be present as an exact match)."},
+    {"freeze", (PyCFunction)pytricia_freeze, METH_NOARGS, "freeze() -> \nCompacts pytricia object for efficient access, but disallows updates"},
+    {"thaw", (PyCFunction)pytricia_thaw, METH_NOARGS, "thaw() -> \nreverses a frozen pytricia object to allow updates"},
+    {"__reduce__", (PyCFunction)pytricia_reduce, METH_NOARGS, "Return state information for pickling"},
+    {"__setstate__", (PyCFunction)pytricia_setstate, METH_VARARGS, "Set state information for unpickling"},
     {NULL,              NULL}           /* sentinel */
 };
 

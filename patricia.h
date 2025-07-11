@@ -138,6 +138,7 @@ typedef struct _patricia_tree_t {
    patricia_node_t 	*head;
    u_int		maxbits;
    int num_active_node;
+   u_short frozen;
 } patricia_tree_t;
 
 
