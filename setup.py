@@ -16,16 +16,17 @@
 # along with Pytricia.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-from setuptools import setup, Extension
+from setuptools import setup, Extension, find_packages
 setup(name="pytricia", 
       version="1.2.0",
       description="An efficient IP address storage and lookup module for Python.",
       author="Joel Sommers",
       author_email="jsommers@acm.org",
       url="https://github.com/jsommers/pytricia",
-      # download_url="http://cs.colgate.edu/~jsommers/downloads/pytricia-0.1.tar.gz",
+      include_package_data=True,
+      packages=find_packages(),
       keywords=['patricia tree','IP addresses'],
-      license="LGPL-3.0-or-later",
+      license_files=["COPYING*"],
       classifiers=[
               "Programming Language :: Python :: 2",
               "Programming Language :: Python :: 3",

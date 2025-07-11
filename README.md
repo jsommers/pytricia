@@ -8,7 +8,7 @@ to recommend it over related modules (including py-radix and SubnetTree):
  2. it works in Python 3, and 
  3. there are a few nicer library features for manipulating the structure.
 
-Copyright (c) 2012-2022  Joel Sommers.  All rights reserved.
+Copyright (c) 2012-2025  Joel Sommers.  All rights reserved.
 
 Pytricia is released under terms of the GNU Lesser General Public License,
 version 3.0 and greater.
