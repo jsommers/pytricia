@@ -484,7 +484,7 @@ class PyTriciaTests(unittest.TestCase):
 
 
     def testPickleEmpty(self):
-        """Make sure things function when pytri emtpy"""
+        """Make sure things function when pytri empty"""
         pyt = pytricia.PyTricia()
         pyt.freeze()
         s = pickle.dumps(pyt)
