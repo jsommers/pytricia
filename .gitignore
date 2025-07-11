@@ -5,3 +5,6 @@ update.sh
 MANIFEST
 build
 dist
+.vscode/
+venv/
+*.swp

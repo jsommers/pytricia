@@ -18,18 +18,18 @@
 
 from setuptools import setup, Extension
 setup(name="pytricia", 
-      version="1.0.2",
+      version="1.1.0",
       description="An efficient IP address storage and lookup module for Python.",
       author="Joel Sommers",
       author_email="jsommers@acm.org",
       url="https://github.com/jsommers/pytricia",
       # download_url="http://cs.colgate.edu/~jsommers/downloads/pytricia-0.1.tar.gz",
       keywords=['patricia tree','IP addresses'],
+      license="LGPL-3.0-or-later",
       classifiers=[
               "Programming Language :: Python :: 2",
               "Programming Language :: Python :: 3",
               "Intended Audience :: Developers",
-              "License :: OSI Approved :: GNU Lesser General Public License v3 or later (LGPLv3+)",
               "Operating System :: OS Independent",
               "Topic :: Software Development :: Libraries :: Python Modules",
               "Topic :: Internet :: Log Analysis",
