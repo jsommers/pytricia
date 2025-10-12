@@ -17,6 +17,7 @@
  */
 
 #include <Python.h>
+#include <stdint.h>
 #include "patricia.h"
 
 #if defined(_WIN32) || defined(_WIN64)
@@ -180,7 +181,8 @@ _key_object_to_prefix(PyObject *key, prefix_t* pfx_rv) {
             return 0;
         }
     } else if (PyLong_Check(key)) {
-        unsigned long packed_addr = htonl(PyLong_AsUnsignedLong(key));
+        unsigned long val = PyLong_AsUnsignedLong(key);
+        uint32_t packed_addr = htonl((uint32_t)val);
         ret_ok = New_Prefix(AF_INET, &packed_addr, 32, pfx_rv);
     } else if (PyBytes_Check(key)) {
         ret_ok = _bytes_to_prefix(key, pfx_rv);
@@ -255,7 +257,8 @@ _key_object_to_prefix(PyObject *key, prefix_t* pfx_rv) {
             PyErr_SetString(PyExc_ValueError, "Invalid key type");
         }
     } else if (PyLong_Check(key) || PyInt_Check(key)) {
-        unsigned long packed_addr = htonl(PyInt_AsUnsignedLongMask(key));
+        unsigned long val = PyInt_AsUnsignedLong(key);
+        uint32_t packed_addr = htonl((uint32_t)val);
         ret_ok = New_Prefix(AF_INET, &packed_addr, 32, pfx_rv);
     } else if (PyTuple_Check(key)) {
         PyObject* value = PyTuple_GetItem(key, 0);
