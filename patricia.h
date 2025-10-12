@@ -6,12 +6,12 @@
  * it under the terms of the GNU Lesser General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * Pytricia is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Lesser General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU Lesser General Public License
  * along with Pytricia.  If not, see <http://www.gnu.org/licenses/>.
  */
@@ -21,7 +21,7 @@
  * Dave Plonka <plonka@doit.wisc.edu>
  *
  * This product includes software developed by the University of Michigan,
- * Merit Network, Inc., and their contributors. 
+ * Merit Network, Inc., and their contributors.
  *
  * This file had been called "radix.h" in the MRT sources.
  *
@@ -31,28 +31,28 @@
  */
 
 /* From copyright.txt:
- * 
+ *
  * Copyright (c) 1997, 1998, 1999
- * 
- * 
+ *
+ *
  * The Regents of the University of Michigan ("The Regents") and Merit Network,
  * Inc.  All rights reserved.
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
- * 1.  Redistributions of source code must retain the above 
- *     copyright notice, this list of conditions and the 
+ * 1.  Redistributions of source code must retain the above
+ *     copyright notice, this list of conditions and the
  *     following disclaimer.
- * 2.  Redistributions in binary form must reproduce the above 
- *     copyright notice, this list of conditions and the 
- *     following disclaimer in the documentation and/or other 
+ * 2.  Redistributions in binary form must reproduce the above
+ *     copyright notice, this list of conditions and the
+ *     following disclaimer in the documentation and/or other
  *     materials provided with the distribution.
- * 3.  All advertising materials mentioning features or use of 
- *     this software must display the following acknowledgement:  
+ * 3.  All advertising materials mentioning features or use of
+ *     this software must display the following acknowledgement:
  * This product includes software developed by the University of Michigan, Merit
- * Network, Inc., and their contributors. 
+ * Network, Inc., and their contributors.
  * 4.  Neither the name of the University, Merit Network, nor the
- *     names of their contributors may be used to endorse or 
- *     promote products derived from this software without 
+ *     names of their contributors may be used to endorse or
+ *     promote products derived from this software without
  *     specific prior written permission.
  * THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS "AS IS" AND ANY
  * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
@@ -63,7 +63,7 @@
  * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
  * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.  
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 #ifndef _PATRICIA_H
@@ -87,29 +87,29 @@
 #include <ws2tcpip.h>
 #pragma comment(lib, "Ws2_32.lib")
 #else
-#include <netinet/in.h> 
-#include <sys/socket.h> 
+#include <netinet/in.h>
+#include <sys/socket.h>
 #endif
 
 /* { from mrt.h */
 
 typedef struct _prefix4_t {
-    u_short family;		
-    u_short bitlen;		
-    int ref_count;		
+    u_short family;
+    u_short bitlen;
+    int ref_count;
     struct in_addr sin;
 } prefix4_t;
 
 typedef struct _prefix6_t {
-    u_short family;		
-    u_short bitlen;		
-    int ref_count;		
+    u_short family;
+    u_short bitlen;
+    int ref_count;
     struct in6_addr sin6;
 } prefix6_t;
 
 typedef struct _prefix_t {
-    u_short family;		
-    u_short bitlen;	
+    u_short family;
+    u_short bitlen;
     int ref_count;
     union {
 		struct in_addr sin;
@@ -144,7 +144,7 @@ typedef struct _patricia_tree_t {
 
 patricia_node_t *patricia_search_exact (patricia_tree_t *patricia, prefix_t *prefix);
 patricia_node_t *patricia_search_best (patricia_tree_t *patricia, prefix_t *prefix);
-patricia_node_t * patricia_search_best2 (patricia_tree_t *patricia, prefix_t *prefix, 
+patricia_node_t * patricia_search_best2 (patricia_tree_t *patricia, prefix_t *prefix,
 				   int inclusive);
 patricia_node_t *patricia_lookup (patricia_tree_t *patricia, prefix_t *prefix);
 void patricia_remove (patricia_tree_t *patricia, patricia_node_t *node);

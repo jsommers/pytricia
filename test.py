@@ -1,17 +1,17 @@
-# 
+#
 # This file is part of Pytricia.
 # Joel Sommers <jsommers@colgate.edu>
-# 
+#
 # Pytricia is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # Pytricia is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU Lesser General Public License for more details.
-# 
+#
 # You should have received a copy of the GNU Lesser General Public License
 # along with Pytricia.  If not, see <http://www.gnu.org/licenses/>.
 #
@@ -32,7 +32,7 @@ def dumppyt(t):
     print ("\nDumping Pytricia")
     for x in t.keys():
         print ("\t",x,t[x])
-    
+
 class PyTriciaTests(unittest.TestCase):
     def testInit(self):
         with self.assertRaises(ValueError) as cm:
@@ -56,7 +56,7 @@ class PyTriciaTests(unittest.TestCase):
         with self.assertRaises(ValueError) as cm:
             t = pytricia.PyTricia(64, socket.AF_INET6+1)
 
-      
+
     def testBasic(self):
         pyt = pytricia.PyTricia()
         pyt["10.0.0.0/8"] = 'a'
@@ -100,19 +100,19 @@ class PyTriciaTests(unittest.TestCase):
             self.assertEqual(pyt['10.1.2.{}'.format(i)], 'abc')
 
         # lookup as bytes (or, ugh, another str in python2)
-        b = socket.inet_aton('10.1.2.3') 
+        b = socket.inet_aton('10.1.2.3')
         self.assertEqual(pyt[b], 'abc')
 
         # bytes in py3k.  python2 stinks.
         if sys.version_info.major == 3 and sys.version_info.minor >= 4:
-            i = b[0] * 2**24 + b[1] * 2**16 + b[2] * 2**8 
+            i = b[0] * 2**24 + b[1] * 2**16 + b[2] * 2**8
             for j in range(256):
                 self.assertEqual(pyt[i+j], 'abc')
 
         if sys.version_info.major == 2:
             # longs only exist in python2.  it stinks.
             b = struct.unpack('4b',socket.inet_aton('10.1.2.3'))
-            i = b[0] * 2**24 + b[1] * 2**16 + b[2] * 2**8 
+            i = b[0] * 2**24 + b[1] * 2**16 + b[2] * 2**8
             self.assertEqual(pyt[long(i)], 'abc')
 
             # i, = struct.unpack('i', b)
@@ -152,7 +152,7 @@ class PyTriciaTests(unittest.TestCase):
             pyt["apple"]
 
         with self.assertRaises(KeyError) as cm:
-            pyt[2**65] 
+            pyt[2**65]
 
     def testMoreComplex(self):
         pyt = pytricia.PyTricia()
@@ -172,7 +172,7 @@ class PyTriciaTests(unittest.TestCase):
             # default for all but 10.0.0.0/8
             if i != 10:
                 self.assertEqual(pyt['{}.2.3.4'.format(i)], 'default route')
-        
+
     def testDelete(self):
         pyt = pytricia.PyTricia(64)
         pyt.insert("fe80:abcd::0/96", "xyz")
@@ -216,7 +216,7 @@ class PyTriciaTests(unittest.TestCase):
 
     def testIp6(self):
         pyt = pytricia.PyTricia(128)
-        addrstr = "fe80::0/32" 
+        addrstr = "fe80::0/32"
         pyt[addrstr] = "hello, ip6"
         self.assertEqual(pyt["fe80::1"], "hello, ip6")
 
@@ -322,7 +322,7 @@ class PyTriciaTests(unittest.TestCase):
             from ipaddress import IPv6Address, IPv6Network
 
             pyt = pytricia.PyTricia(128)
-            
+
             pyt.insert(IPv6Network('2001:218:200e::/56'), "def")
             pyt.insert(IPv6Network("fe80:abcd::0/96"), "xyz")
             pyt.insert(IPv6Address("fe80:beef::"), 96, "abc")
@@ -413,10 +413,10 @@ class PyTriciaTests(unittest.TestCase):
             pyt.insert("1.2.3/24", "a")
 
         with self.assertRaises(KeyError) as cm:
-            pyt["1.2.3.0/24"] 
+            pyt["1.2.3.0/24"]
 
         with self.assertRaises(ValueError) as cm:
-            pyt["1.2.3/24"] 
+            pyt["1.2.3/24"]
 
         with self.assertRaises(ValueError) as cm:
             pyt.get("1.2.3/24")
@@ -488,7 +488,7 @@ class PyTriciaTests(unittest.TestCase):
             pyt.delete("10.1.0.0/16")
         with self.assertRaises(ValueError):
             pyt.insert("10.1.0.0/16")
-        
+
         # still frozen ofter pickle/unpickle
         pyt = pickle.loads(s)
         with self.assertRaises(ValueError):
@@ -569,7 +569,7 @@ class PyTriciaTests(unittest.TestCase):
                 self.fail(f"Assertion failed in subprocess: {msg}")
         else:
             self.fail("No result received from subprocess")
-    
+
     def testPickleMoreComplex(self):
         pyt = pytricia.PyTricia()
         pyt["10.0.0.0/8"] = 'a'

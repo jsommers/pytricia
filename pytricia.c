@@ -1,17 +1,17 @@
 /*
  * This file is part of Pytricia.
  * Joel Sommers <jsommers@colgate.edu>
- * 
+ *
  * Pytricia is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * Pytricia is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Lesser General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU Lesser General Public License
  * along with Pytricia.  If not, see <http://www.gnu.org/licenses/>.
  */
@@ -163,8 +163,8 @@ _key_object_to_prefix(PyObject *key, prefix_t* pfx_rv) {
 #endif
 
     if (PyUnicode_Check(key)) {
-        int rv = PyUnicode_READY(key); 
-        if (rv < 0) { 
+        int rv = PyUnicode_READY(key);
+        if (rv < 0) {
             PyErr_SetString(PyExc_ValueError, "Error parsing string prefix");
             return 0;
         }
@@ -238,7 +238,7 @@ _key_object_to_prefix(PyObject *key, prefix_t* pfx_rv) {
         } else {
             PyErr_SetString(PyExc_ValueError, "Error getting raw representation of IPAddress");
         }
-    } 
+    }
 #endif
     else {
         PyErr_SetString(PyExc_ValueError, "Invalid key type");
@@ -352,14 +352,14 @@ pytricia_init(PyTricia *self, PyObject *args, PyObject *kwds) {
         self->m_tree = New_Patricia(1); // need to have *something* to dealloc
         PyErr_SetString(PyExc_ValueError, "Invalid number of maximum bits; must be between 0 and 128, inclusive");
         return -1;
-    } 
+    }
 
     if (!(family == AF_INET || family == AF_INET6)) {
         self->m_tree = New_Patricia(1); // need to have *something* to dealloc
         PyErr_SetString(PyExc_ValueError, "Invalid address family; must be AF_INET (2) or AF_INET6 (30)");
         return -1;
     }
-    
+
     self->m_tree = New_Patricia(prefixlen);
     self->m_family = family;
     self->m_raw_output = raw_output && PyObject_IsTrue(raw_output);
@@ -369,8 +369,8 @@ pytricia_init(PyTricia *self, PyObject *args, PyObject *kwds) {
     return 0;
 }
 
-static Py_ssize_t 
-pytricia_length(PyTricia *self) 
+static Py_ssize_t
+pytricia_length(PyTricia *self)
 {
     patricia_node_t *node = NULL;
     Py_ssize_t count = 0;
@@ -381,7 +381,7 @@ pytricia_length(PyTricia *self)
     return count;
 }
 
-static PyObject* 
+static PyObject*
 pytricia_subscript(PyTricia *self, PyObject *key) {
     prefix_t prefix; memset(&prefix, 0, sizeof(prefix));
     int ret_ok = _key_object_to_prefix(key, &prefix);
@@ -430,7 +430,7 @@ pytricia_internal_delete(PyTricia *self, PyObject *key) {
     return 0;
 }
 
-static int 
+static int
 _pytricia_assign_subscript_internal(PyTricia *self, PyObject *key, PyObject *value, long prefixlen) {
     if (!value) {
         return pytricia_internal_delete(self, key);
@@ -452,13 +452,13 @@ _pytricia_assign_subscript_internal(PyTricia *self, PyObject *key, PyObject *val
         prefix.bitlen = prefixlen;
     }
     patricia_node_t *node = patricia_lookup(self->m_tree, &prefix);
-    
+
     if (!node) {
         PyErr_SetString(PyExc_ValueError, "Error inserting into patricia tree");
         return -1;
     }
 
-    // node already existed, lower ref count on old data 
+    // node already existed, lower ref count on old data
     if (node->data) {
         PyObject* data = (PyObject*)node->data;
         Py_DECREF(data);
@@ -470,7 +470,7 @@ _pytricia_assign_subscript_internal(PyTricia *self, PyObject *key, PyObject *val
     return 0;
 }
 
-static int 
+static int
 pytricia_assign_subscript(PyTricia *self, PyObject *key, PyObject *value) {
     return _pytricia_assign_subscript_internal(self, key, value, -1);
 }
@@ -482,7 +482,7 @@ pytricia_insert(PyTricia *self, PyObject *args) {
     PyObject *value2 = NULL;
     PyObject *rhs = NULL;
 
-    if (!PyArg_ParseTuple(args, "O|OO", &key, &value1, &value2)) { 
+    if (!PyArg_ParseTuple(args, "O|OO", &key, &value1, &value2)) {
         PyErr_SetString(PyExc_ValueError, "Invalid argument(s) to insert");
         return NULL;
     }
@@ -503,7 +503,7 @@ pytricia_insert(PyTricia *self, PyObject *args) {
             }
 #endif
         }
-        int rv = _pytricia_assign_subscript_internal(self, key, rhs, prefixlen); 
+        int rv = _pytricia_assign_subscript_internal(self, key, rhs, prefixlen);
         if (rv == -1) {
             PyErr_SetString(PyExc_ValueError, "Invalid key.");
             return NULL;
@@ -522,11 +522,11 @@ pytricia_delitem(PyTricia *self, PyObject *args) {
     if (!PyArg_ParseTuple(args, "O", &key)) {
         return NULL;
     }
-    
+
     int rv = pytricia_internal_delete(self, key);
     if (rv < 0) {
         return NULL;
-    } 
+    }
     Py_RETURN_NONE;
 }
 
@@ -614,16 +614,16 @@ pytricia_has_key(PyTricia *self, PyObject *args) {
     Py_RETURN_FALSE;
 }
 
-static PyObject* 
+static PyObject*
 pytricia_keys(register PyTricia *self, PyObject *unused) {
     register PyObject *rvlist = PyList_New(0);
     if (!rvlist) {
         return NULL;
     }
-    
+
     patricia_node_t *node = NULL;
     int err = 0;
-    
+
     PATRICIA_WALK (self->m_tree->head, node) {
         PyObject *item = _prefix_to_key_object(&node->prefix, self->m_raw_output);
         if (!item) {
@@ -914,7 +914,7 @@ static PyObject* pytricia_setstate(PyTricia *self, PyObject *args) {
       return NULL;
     }
     memcpy(self->m_tree, PyBytes_AsString(bytes), sizeof(patricia_tree_t));
-    
+
     // restore head/node data
     PyObject* nodebytes = PyDict_GetItemString(state, "nodes");
     if (!PyBytes_Check(nodebytes)) {
@@ -931,7 +931,7 @@ static PyObject* pytricia_setstate(PyTricia *self, PyObject *args) {
             return NULL;
         }
         memcpy(self->m_tree->head, PyBytes_AsString(nodebytes), PyBytes_Size(nodebytes));
- 
+
         // Now re-write the links relative to the start of the contiguous memory block
         patricia_node_t *node = self->m_tree->head;
         for(size_t i=0; i<num_nodes; i++) {
@@ -1034,22 +1034,22 @@ pytriciaiter_next(PyTriciaIter *iter)
         iter->m_Xnode = iter->m_Xrn;
         if (iter->m_Xnode) {
             // advance the iterator; copied from patricia.h macros
-            if (iter->m_Xrn->l) { 
-                if (iter->m_Xrn->r) { 
-                    *(iter->m_Xsp)++ = iter->m_Xrn->r; 
-                } 
-                iter->m_Xrn = iter->m_Xrn->l; 
-            } else if (iter->m_Xrn->r) { 
-                iter->m_Xrn = iter->m_Xrn->r; 
-            } else if (iter->m_Xsp != iter->m_Xstack) { 
-                iter->m_Xrn = *(--iter->m_Xsp); 
-            } else { 
-                iter->m_Xrn = (patricia_node_t *) 0; 
-            } 
+            if (iter->m_Xrn->l) {
+                if (iter->m_Xrn->r) {
+                    *(iter->m_Xsp)++ = iter->m_Xrn->r;
+                }
+                iter->m_Xrn = iter->m_Xrn->l;
+            } else if (iter->m_Xrn->r) {
+                iter->m_Xrn = iter->m_Xrn->r;
+            } else if (iter->m_Xsp != iter->m_Xstack) {
+                iter->m_Xrn = *(--iter->m_Xsp);
+            } else {
+                iter->m_Xrn = (patricia_node_t *) 0;
+            }
 
             if (iter->m_Xnode->data) {
                 return _prefix_to_key_object(&iter->m_Xnode->prefix, iter->m_parent->m_raw_output);
-            } 
+            }
         } else {
             PyErr_SetNone(PyExc_StopIteration);
             return NULL;
@@ -1067,7 +1067,7 @@ pytriciaiter_dealloc(PyTriciaIter *iterobj)
         free(iterobj->m_Xstack);
     }
     Py_DECREF(iterobj->m_parent);
-    Py_TYPE(iterobj)->tp_free((PyObject*)iterobj);    
+    Py_TYPE(iterobj)->tp_free((PyObject*)iterobj);
 }
 
 static PyTypeObject PyTriciaType = {
@@ -1172,7 +1172,7 @@ pytricia_iter(register PyTricia *self, PyObject *unused)
         Py_TYPE(iterobj)->tp_free((PyObject*)iterobj);
         return PyErr_NoMemory();
     }
- 
+
     iterobj->m_Xsp = iterobj->m_Xstack;
     iterobj->m_Xrn = iterobj->m_Xhead;
     return (PyObject*)iterobj;
@@ -1203,10 +1203,10 @@ static struct PyModuleDef pytricia_moduledef = {
 
 #if PY_MAJOR_VERSION >= 3
 PyMODINIT_FUNC
-PyInit_pytricia(void) 
+PyInit_pytricia(void)
 #else
 PyMODINIT_FUNC
-initpytricia(void) 
+initpytricia(void)
 #endif
 {
     PyObject* m;
@@ -1232,7 +1232,7 @@ initpytricia(void)
     m = Py_InitModule3("pytricia", NULL, pytricia_doc);
 #endif
     if (m == NULL)
-#if PY_MAJOR_VERSION == 3 
+#if PY_MAJOR_VERSION == 3
       return NULL;
 #else
       return;
