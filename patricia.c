@@ -1,17 +1,17 @@
 /*
  * This file is part of Pytricia.
  * Joel Sommers <jsommers@colgate.edu>
- * 
+ *
  * Pytricia is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * Pytricia is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Lesser General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU Lesser General Public License
  * along with Pytricia.  If not, see <http://www.gnu.org/licenses/>.
  */
@@ -21,7 +21,7 @@
  * Dave Plonka <plonka@doit.wisc.edu>
  *
  * This product includes software developed by the University of Michigan,
- * Merit Network, Inc., and their contributors. 
+ * Merit Network, Inc., and their contributors.
  *
  * This file had been called "radix.c" in the MRT sources.
  *
@@ -31,28 +31,28 @@
  */
 
 /* From copyright.txt:
- * 
+ *
  * Copyright (c) 1997, 1998, 1999
- * 
- * 
+ *
+ *
  * The Regents of the University of Michigan ("The Regents") and Merit Network,
  * Inc.  All rights reserved.
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
- * 1.  Redistributions of source code must retain the above 
- *     copyright notice, this list of conditions and the 
+ * 1.  Redistributions of source code must retain the above
+ *     copyright notice, this list of conditions and the
  *     following disclaimer.
- * 2.  Redistributions in binary form must reproduce the above 
- *     copyright notice, this list of conditions and the 
- *     following disclaimer in the documentation and/or other 
+ * 2.  Redistributions in binary form must reproduce the above
+ *     copyright notice, this list of conditions and the
+ *     following disclaimer in the documentation and/or other
  *     materials provided with the distribution.
- * 3.  All advertising materials mentioning features or use of 
- *     this software must display the following acknowledgement:  
+ * 3.  All advertising materials mentioning features or use of
+ *     this software must display the following acknowledgement:
  * This product includes software developed by the University of Michigan, Merit
- * Network, Inc., and their contributors. 
+ * Network, Inc., and their contributors.
  * 4.  Neither the name of the University, Merit Network, nor the
- *     names of their contributors may be used to endorse or 
- *     promote products derived from this software without 
+ *     names of their contributors may be used to endorse or
+ *     promote products derived from this software without
  *     specific prior written permission.
  * THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS "AS IS" AND ANY
  * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
@@ -63,28 +63,28 @@
  * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
  * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.  
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 #define COPYRIGHT \
 "This product includes software developed by the University of Michigan, Merit "\
 "Network, Inc., and their contributors."
 
-#include <assert.h> 
-#include <ctype.h> 
-#include <errno.h> 
-#include <math.h> 
-#include <stddef.h> 
-#include <stdio.h> 
-#include <stdlib.h> 
-#include <string.h> 
-#include <sys/types.h> 
+#include <assert.h>
+#include <ctype.h>
+#include <errno.h>
+#include <math.h>
+#include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/types.h>
 #if defined(_WIN32) || defined(_WIN64)
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #pragma comment(lib, "Ws2_32.lib")
 #else
-#include <arpa/inet.h> 
+#include <arpa/inet.h>
 #endif
 
 #include "patricia.h"
@@ -105,7 +105,7 @@ prefix_tochar (prefix_t * prefix)
 	return ((u_char *) & prefix->add.sin);
 }
 
-int 
+int
 comp_with_mask (void *addr, void *dest, u_int mask)
 {
 
@@ -120,15 +120,15 @@ comp_with_mask (void *addr, void *dest, u_int mask)
 }
 
 /* inet_pton substitute implementation
- * Uses inet_addr to convert an IP address in dotted decimal notation into 
+ * Uses inet_addr to convert an IP address in dotted decimal notation into
  * unsigned long and copies the result to dst.
- * Only supports AF_INET.  Follows standard error return conventions of 
+ * Only supports AF_INET.  Follows standard error return conventions of
  * inet_pton.
  */
 int
 local_inet_pton (int af, const char *src, void *dst)
 {
-	u_long result;  
+	u_long result;
 
 	if (af == AF_INET) {
 	result = inet_addr(src);
@@ -197,7 +197,7 @@ my_inet_pton (int af, const char *src, void *dst)
 	}
 }
 
-/* 
+/*
  * convert prefix information to ascii string with length
  * thread safe and (almost) re-entrant implementation
  */
@@ -220,7 +220,7 @@ prefix_toa2x (prefix_t *prefix, char *buff, int with_len)
 		{ /* for scope only */
 	   static struct buffer local_buff;
 		   buffp = &local_buff;
-	} 
+	}
 #    endif
 	if (buffp == NULL) {
 		/* XXX should we report an error? */
@@ -298,9 +298,9 @@ New_Prefix (int family, void *dest, int bitlen, prefix_t *prefix)
 #else
 			//for some reason, compiler is getting
 			//prefix4_t size incorrect on NT
-			prefix = calloc(1, sizeof (prefix_t)); 
+			prefix = calloc(1, sizeof (prefix_t));
 #endif /* NT */
-		
+
 			dynamic_allocated++;
 		}
 		memcpy (&prefix->add.sin, dest, 4);
@@ -442,10 +442,10 @@ patricia_search_exact (patricia_tree_t *patricia, prefix_t *prefix)
 	if (BIT_TEST (addr[node->bit >> 3], 0x80 >> (node->bit & 0x07))) {
 #ifdef PATRICIA_DEBUG
 		if (node->data)
-				fprintf (stderr, "patricia_search_exact: take right %s/%d\n", 
+				fprintf (stderr, "patricia_search_exact: take right %s/%d\n",
 					 prefix_toa (&node->prefix), node->prefix.bitlen);
 		else
-				fprintf (stderr, "patricia_search_exact: take right at %d\n", 
+				fprintf (stderr, "patricia_search_exact: take right at %d\n",
 			 node->bit);
 #endif /* PATRICIA_DEBUG */
 		node = node->r;
@@ -453,10 +453,10 @@ patricia_search_exact (patricia_tree_t *patricia, prefix_t *prefix)
 	else {
 #ifdef PATRICIA_DEBUG
 		if (node->data)
-			fprintf (stderr, "patricia_search_exact: take left %s/%d\n", 
+			fprintf (stderr, "patricia_search_exact: take left %s/%d\n",
 				 prefix_toa (&node->prefix), node->prefix.bitlen);
 		else
-				fprintf (stderr, "patricia_search_exact: take left at %d\n", 
+				fprintf (stderr, "patricia_search_exact: take left at %d\n",
 			 node->bit);
 #endif /* PATRICIA_DEBUG */
 		node = node->l;
@@ -468,7 +468,7 @@ patricia_search_exact (patricia_tree_t *patricia, prefix_t *prefix)
 
 #ifdef PATRICIA_DEBUG
 	if (&node->prefix)
-		fprintf (stderr, "patricia_search_exact: stop at %s/%d\n", 
+		fprintf (stderr, "patricia_search_exact: stop at %s/%d\n",
 			 prefix_toa (&node->prefix), node->prefix.bitlen);
 	else
 		fprintf (stderr, "patricia_search_exact: stop at %d\n", node->bit);
@@ -480,7 +480,7 @@ patricia_search_exact (patricia_tree_t *patricia, prefix_t *prefix)
 	if (comp_with_mask (prefix_tochar (&node->prefix), prefix_tochar (prefix),
 			bitlen)) {
 #ifdef PATRICIA_DEBUG
-		fprintf (stderr, "patricia_search_exact: found %s/%d\n", 
+		fprintf (stderr, "patricia_search_exact: found %s/%d\n",
 			 prefix_toa (&node->prefix), node->prefix.bitlen);
 #endif /* PATRICIA_DEBUG */
 		return (node);
@@ -514,7 +514,7 @@ patricia_search_best2 (patricia_tree_t *patricia, prefix_t *prefix, int inclusiv
 
 		if (node->data) {
 #ifdef PATRICIA_DEBUG
-			fprintf (stderr, "patricia_search_best: push %s/%d\n", 
+			fprintf (stderr, "patricia_search_best: push %s/%d\n",
 				 prefix_toa (&node->prefix), node->prefix.bitlen);
 #endif /* PATRICIA_DEBUG */
 			stack[cnt++] = node;
@@ -523,10 +523,10 @@ patricia_search_best2 (patricia_tree_t *patricia, prefix_t *prefix, int inclusiv
 		if (BIT_TEST (addr[node->bit >> 3], 0x80 >> (node->bit & 0x07))) {
 #ifdef PATRICIA_DEBUG
 			if (&node->prefix)
-				fprintf (stderr, "patricia_search_best: take right %s/%d\n", 
+				fprintf (stderr, "patricia_search_best: take right %s/%d\n",
 					 prefix_toa (&node->prefix), node->prefix.bitlen);
 			else
-				fprintf (stderr, "patricia_search_best: take right at %d\n", 
+				fprintf (stderr, "patricia_search_best: take right at %d\n",
 					 node->bit);
 #endif /* PATRICIA_DEBUG */
 			node = node->r;
@@ -534,10 +534,10 @@ patricia_search_best2 (patricia_tree_t *patricia, prefix_t *prefix, int inclusiv
 		else {
 #ifdef PATRICIA_DEBUG
 			if (&node->prefix)
-				fprintf (stderr, "patricia_search_best: take left %s/%d\n", 
+				fprintf (stderr, "patricia_search_best: take left %s/%d\n",
 					 prefix_toa (&node->prefix), node->prefix.bitlen);
 			else
-				fprintf (stderr, "patricia_search_best: take left at %d\n", 
+				fprintf (stderr, "patricia_search_best: take left at %d\n",
 					 node->bit);
 #endif /* PATRICIA_DEBUG */
 			node = node->l;
@@ -554,7 +554,7 @@ patricia_search_best2 (patricia_tree_t *patricia, prefix_t *prefix, int inclusiv
 	if (node == NULL)
 		fprintf (stderr, "patricia_search_best: stop at null\n");
 	else if (&node->prefix)
-		fprintf (stderr, "patricia_search_best: stop at %s/%d\n", 
+		fprintf (stderr, "patricia_search_best: stop at %s/%d\n",
 			 prefix_toa (&node->prefix), node->prefix.bitlen);
 	else
 		fprintf (stderr, "patricia_search_best: stop at %d\n", node->bit);
@@ -566,14 +566,14 @@ patricia_search_best2 (patricia_tree_t *patricia, prefix_t *prefix, int inclusiv
 	while (--cnt >= 0) {
 		node = stack[cnt];
 #ifdef PATRICIA_DEBUG
-		fprintf (stderr, "patricia_search_best: pop %s/%d\n", 
+		fprintf (stderr, "patricia_search_best: pop %s/%d\n",
 			 prefix_toa (&node->prefix), node->prefix.bitlen);
 #endif /* PATRICIA_DEBUG */
-		if (comp_with_mask (prefix_tochar (&node->prefix), 
+		if (comp_with_mask (prefix_tochar (&node->prefix),
 				prefix_tochar (prefix),
 				node->prefix.bitlen)) {
 #ifdef PATRICIA_DEBUG
-			fprintf (stderr, "patricia_search_best: found %s/%d\n", 
+			fprintf (stderr, "patricia_search_best: found %s/%d\n",
 				 prefix_toa (&node->prefix), node->prefix.bitlen);
 #endif /* PATRICIA_DEBUG */
 			return (node);
@@ -612,7 +612,7 @@ patricia_lookup (patricia_tree_t *patricia, prefix_t *prefix)
 		node->data = NULL;
 		patricia->head = node;
 #ifdef PATRICIA_DEBUG
-		fprintf (stderr, "patricia_lookup: new_node #0 %s/%d (head)\n", 
+		fprintf (stderr, "patricia_lookup: new_node #0 %s/%d (head)\n",
 			prefix_toa (prefix), prefix->bitlen);
 #endif /* PATRICIA_DEBUG */
 		patricia->num_active_node++;
@@ -631,7 +631,7 @@ patricia_lookup (patricia_tree_t *patricia, prefix_t *prefix)
 				break;
 #ifdef PATRICIA_DEBUG
 			if (&node->prefix)
-				fprintf (stderr, "patricia_lookup: take right %s/%d\n", 
+				fprintf (stderr, "patricia_lookup: take right %s/%d\n",
 					prefix_toa (&node->prefix), node->prefix.bitlen);
 			else
 				fprintf (stderr, "patricia_lookup: take right at %d\n", node->bit);
@@ -643,7 +643,7 @@ patricia_lookup (patricia_tree_t *patricia, prefix_t *prefix)
 				break;
 #ifdef PATRICIA_DEBUG
 			if (&node->prefix)
-				fprintf (stderr, "patricia_lookup: take left %s/%d\n", 
+				fprintf (stderr, "patricia_lookup: take left %s/%d\n",
 					prefix_toa (&node->prefix), node->prefix.bitlen);
 			else
 				fprintf (stderr, "patricia_lookup: take left at %d\n", node->bit);
@@ -656,7 +656,7 @@ patricia_lookup (patricia_tree_t *patricia, prefix_t *prefix)
 
 	assert (node->data);
 #ifdef PATRICIA_DEBUG
-	fprintf (stderr, "patricia_lookup: stop at %s/%d\n", 
+	fprintf (stderr, "patricia_lookup: stop at %s/%d\n",
 		 prefix_toa (&node->prefix), node->prefix.bitlen);
 #endif /* PATRICIA_DEBUG */
 
@@ -691,7 +691,7 @@ patricia_lookup (patricia_tree_t *patricia, prefix_t *prefix)
 		parent = node->parent;
 #ifdef PATRICIA_DEBUG
 		if (&node->prefix)
-			fprintf (stderr, "patricia_lookup: up to %s/%d\n", 
+			fprintf (stderr, "patricia_lookup: up to %s/%d\n",
 				 prefix_toa (&node->prefix), node->prefix.bitlen);
 		else
 			fprintf (stderr, "patricia_lookup: up to %d\n", node->bit);
@@ -700,8 +700,8 @@ patricia_lookup (patricia_tree_t *patricia, prefix_t *prefix)
 
 	if (differ_bit == bitlen && node->bit == bitlen) {
 		if (node->data) {
-#ifdef PATRICIA_DEBUG 
-			fprintf (stderr, "patricia_lookup: found %s/%d\n", 
+#ifdef PATRICIA_DEBUG
+			fprintf (stderr, "patricia_lookup: found %s/%d\n",
 				 prefix_toa (&node->prefix), node->prefix.bitlen);
 #endif /* PATRICIA_DEBUG */
 			return (node);
@@ -735,7 +735,7 @@ patricia_lookup (patricia_tree_t *patricia, prefix_t *prefix)
 			node->l = new_node;
 		}
 #ifdef PATRICIA_DEBUG
-		fprintf (stderr, "patricia_lookup: new_node #2 %s/%d (child)\n", 
+		fprintf (stderr, "patricia_lookup: new_node #2 %s/%d (child)\n",
 			 prefix_toa (prefix), prefix->bitlen);
 #endif /* PATRICIA_DEBUG */
 		return (new_node);
@@ -762,7 +762,7 @@ patricia_lookup (patricia_tree_t *patricia, prefix_t *prefix)
 		}
 		node->parent = new_node;
 #ifdef PATRICIA_DEBUG
-		fprintf (stderr, "patricia_lookup: new_node #3 %s/%d (parent)\n", 
+		fprintf (stderr, "patricia_lookup: new_node #3 %s/%d (parent)\n",
 			 prefix_toa (prefix), prefix->bitlen);
 #endif /* PATRICIA_DEBUG */
 	}
@@ -796,7 +796,7 @@ patricia_lookup (patricia_tree_t *patricia, prefix_t *prefix)
 		}
 		node->parent = glue;
 #ifdef PATRICIA_DEBUG
-		fprintf (stderr, "patricia_lookup: new_node #4 %s/%d (glue+node)\n", 
+		fprintf (stderr, "patricia_lookup: new_node #4 %s/%d (glue+node)\n",
 			 prefix_toa (prefix), prefix->bitlen);
 #endif /* PATRICIA_DEBUG */
 	}
@@ -814,10 +814,10 @@ patricia_remove (patricia_tree_t *patricia, patricia_node_t *node)
 
 	if (node->r && node->l) {
 #ifdef PATRICIA_DEBUG
-		fprintf (stderr, "patricia_remove: #0 %s/%d (r & l)\n", 
+		fprintf (stderr, "patricia_remove: #0 %s/%d (r & l)\n",
 			 prefix_toa (&node->prefix), node->prefix.bitlen);
 #endif /* PATRICIA_DEBUG */
-	
+
 		/* Also I needed to clear data pointer -- masaki */
 		node->data = NULL;
 		return;
@@ -825,7 +825,7 @@ patricia_remove (patricia_tree_t *patricia, patricia_node_t *node)
 
 	if (node->r == NULL && node->l == NULL) {
 #ifdef PATRICIA_DEBUG
-		fprintf (stderr, "patricia_remove: #1 %s/%d (!r & !l)\n", 
+		fprintf (stderr, "patricia_remove: #1 %s/%d (!r & !l)\n",
 			 prefix_toa (&node->prefix), node->prefix.bitlen);
 #endif /* PATRICIA_DEBUG */
 		parent = node->parent;
@@ -871,7 +871,7 @@ patricia_remove (patricia_tree_t *patricia, patricia_node_t *node)
 	}
 
 #ifdef PATRICIA_DEBUG
-	fprintf (stderr, "patricia_remove: #2 %s/%d (r ^ l)\n", 
+	fprintf (stderr, "patricia_remove: #2 %s/%d (r ^ l)\n",
 		 prefix_toa (&node->prefix), node->prefix.bitlen);
 #endif /* PATRICIA_DEBUG */
 	if (node->r) {
