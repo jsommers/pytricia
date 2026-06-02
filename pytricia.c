@@ -924,7 +924,7 @@ static PyObject* pytricia_setstate(PyTricia *self, PyObject *args) {
     if (PyBytes_Size(nodebytes)) {
         patricia_node_t* original_head = self->m_tree->head;
         self->m_tree->head = calloc(1, PyBytes_Size(nodebytes));
-        ssize_t offset_bytes = (char*)self->m_tree->head - (char*)original_head;
+        Py_ssize_t offset_bytes = (char*)self->m_tree->head - (char*)original_head;
         size_t num_nodes = PyBytes_Size(nodebytes) / sizeof(patricia_node_t);
         if(self->m_tree->head == NULL) {
             PyErr_SetString(PyExc_MemoryError, "__setstate__ error allocating space for nodes");
